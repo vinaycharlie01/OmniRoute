@@ -89,6 +89,7 @@ LABEL org.opencontainers.image.title="omniroute" \
 ENV NODE_ENV=production
 ENV PORT=20128
 ENV HOSTNAME=0.0.0.0
+ENV HOST=0.0.0.0
 ENV OMNIROUTE_MEMORY_MB=1024
 ENV NODE_OPTIONS="--max-old-space-size=${OMNIROUTE_MEMORY_MB}"
 

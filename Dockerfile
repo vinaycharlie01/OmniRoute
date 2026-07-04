@@ -114,6 +114,18 @@ COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlit
 # migrations land at <standalone>/migrations via assembleStandalone; point the runtime at them.
 ENV OMNIROUTE_MIGRATIONS_DIR=/app/migrations
 
+# Runtime scripts — assembleStandalone should copy these, but ensure they're present.
+# If assembleStandalone ran correctly, these COPY commands are no-ops (files already exist).
+# If it didn't run or partially failed, these serve as fallback copies to keep the image bootable.
+COPY --from=builder /app/scripts/dev/run-standalone.mjs ./dev/run-standalone.mjs
+COPY --from=builder /app/scripts/build/runtime-env.mjs ./build/runtime-env.mjs
+COPY --from=builder /app/scripts/build/bootstrap-env.mjs ./build/bootstrap-env.mjs
+COPY --from=builder /app/scripts/dev/standalone-server-ws.mjs ./server-ws.mjs
+COPY --from=builder /app/scripts/dev/peer-stamp.mjs ./peer-stamp.mjs
+COPY --from=builder /app/scripts/dev/http-method-guard.cjs ./http-method-guard.cjs
+COPY --from=builder /app/scripts/dev/responses-ws-proxy.mjs ./responses-ws-proxy.mjs
+COPY --from=builder /app/scripts/dev/webdav-handler.mjs ./webdav-handler.mjs
+
 # Docker healthcheck script — not traced by Next.js standalone output, so copy
 # it explicitly. The HEALTHCHECK CMD references it as `node healthcheck.mjs`.
 COPY --from=builder /app/scripts/dev/healthcheck.mjs ./healthcheck.mjs

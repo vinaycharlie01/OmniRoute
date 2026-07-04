@@ -119,12 +119,13 @@ ENV OMNIROUTE_MIGRATIONS_DIR=/app/migrations
 COPY --from=builder /app/scripts/dev/healthcheck.mjs ./healthcheck.mjs
 
 # Copy run-standalone.mjs script explicitly to ensure it's available at runtime
-COPY --from=builder /app/scripts/dev/run-standalone.mjs ./run-standalone.mjs
-COPY --from=builder /app/scripts/dev/standalone-server-ws.mjs ./server-ws.mjs
-COPY --from=builder /app/scripts/dev/peer-stamp.mjs ./peer-stamp.mjs
-COPY --from=builder /app/scripts/dev/responses-ws-proxy.mjs ./responses-ws-proxy.mjs
-COPY --from=builder /app/scripts/build/runtime-env.mjs ./build/runtime-env.mjs
-COPY --from=builder /app/scripts/build/bootstrap-env.mjs ./build/bootstrap-env.mjs
+# Keep the directory structure so relative imports (../build/...) resolve correctly
+COPY --from=builder /app/scripts/dev/run-standalone.mjs ./scripts/dev/run-standalone.mjs
+COPY --from=builder /app/scripts/dev/standalone-server-ws.mjs ./scripts/dev/standalone-server-ws.mjs
+COPY --from=builder /app/scripts/dev/peer-stamp.mjs ./scripts/dev/peer-stamp.mjs
+COPY --from=builder /app/scripts/dev/responses-ws-proxy.mjs ./scripts/dev/responses-ws-proxy.mjs
+COPY --from=builder /app/scripts/build/runtime-env.mjs ./scripts/build/runtime-env.mjs
+COPY --from=builder /app/scripts/build/bootstrap-env.mjs ./scripts/build/bootstrap-env.mjs
 
 # Hand /app over to the baked-in `node` non-root user (UID/GID 1000) so the
 # runtime process never holds root privileges. The chown happens after all
@@ -144,7 +145,7 @@ ENTRYPOINT ["/tmp/check-permissions.sh"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD ["node", "healthcheck.mjs"]
 
-CMD ["node", "run-standalone.mjs"]
+CMD ["node", "scripts/dev/run-standalone.mjs"]
 
 # ── Runner Web (web-cookie providers: Gemini Web, Claude Turnstile) ───────────
 #

@@ -4,7 +4,8 @@
 
 ### ✨ New Features
 
-- **feat(providers): add IBM Bob gateway** — registers `ibm-bob` (IBM Bob / Bob Code, the LiteLLM-compatible enterprise gateway backing the IBM Bob VS Code extension) as a Bearer-auth, OpenAI-compatible provider with passthrough model routing. There is no public OAuth client to embed (Bob's VS Code extension signs in via IBM's own enterprise SSO), so users paste their own Bob access token as a plain API key, same as any other apikey gateway.
+- **feat(providers): add IBM Bob gateway** — registers `ibm-bob` (IBM Bob / Bob Code, the LiteLLM-compatible enterprise gateway backing the IBM Bob VS Code extension) as a Bearer-auth, OpenAI-compatible provider with passthrough model routing.
+- **feat(oauth): IBM Bob browser sign-in (bob.ibm.com/login)** — `ibm-bob` is now OAuth-primary: the newer Bob VS Code extension bundle (distinct from the older standalone extension, which strictly requires a `vscode://` callback) uses a plain loopback-style authorization_code flow with no client secret — `bob.ibm.com/login?callback_uri=&state=` → code exchanged via `POST /v1/auth/token` with a bare `{code}` body. OmniRoute now drives this flow directly (popup + `/callback`), decodes the returned JWT for email/expiry, and supports refresh via `POST /v1/auth/refresh`. Pasting an existing Bob access token as a plain Bearer API key remains available as a secondary path (`FREE_APIKEY_PROVIDER_IDS`), matching the existing `codebuddy-cn` dual-auth precedent.
 
 ### 🔧 Bug Fixes
 

@@ -401,6 +401,22 @@ export const TRAE_CONFIG = {
     "Authorize via trae.ai in the popup, or sign in to solo.trae.ai and paste the Cloud-IDE-JWT from the Authorization header (~14-day lifetime).",
 };
 
+// IBM Bob Configuration (Authorization Code flow, no client_id/secret)
+//
+// Reverse-engineered from the Bob VS Code extension bundle (app/extensions/bob-code):
+// the client opens `${webLoginUrl}/login?callback_uri=<redirect>&state=<uuid>` in a
+// browser, the IdP redirects back to the caller-supplied callback with `?code=&state=`,
+// and the code is exchanged server-side with a bare `{code}` JSON body — no PKCE, no
+// client secret. This is distinct from the OLDER standalone bob-code extension, which
+// only supports a `vscode://` custom-URI callback and strictly rejects any other
+// redirect_uri (confirmed live: non-vscode redirect_uri → 400 "Invalid redirect_uri").
+export const IBM_BOB_CONFIG = {
+  webLoginUrl: "https://bob.ibm.com",
+  gatewayBaseUrl: "https://api.us-east.bob.ibm.com",
+  tokenUrl: "https://api.us-east.bob.ibm.com/v1/auth/token",
+  refreshUrl: "https://api.us-east.bob.ibm.com/v1/auth/refresh",
+};
+
 // Windsurf / Devin CLI Configuration
 //
 // 2026-05-29 (Phase 1 hotfix):

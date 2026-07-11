@@ -537,10 +537,7 @@ export async function refreshCodebuddyCnToken(
       expiresIn: data.data.expiresIn,
     };
   } catch (error) {
-    log?.error?.(
-      "TOKEN_REFRESH",
-      `Network error refreshing CodeBuddy CN token: ${error?.message}`
-    );
+    log?.error?.("TOKEN_REFRESH", `Network error refreshing CodeBuddy CN token: ${error?.message}`);
     return null;
   }
 }
@@ -811,6 +808,69 @@ export async function refreshGitLabDuoToken(
     log?.error?.(
       "TOKEN_REFRESH",
       `Network error refreshing GitLab Duo token: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return null;
+  }
+}
+
+/**
+ * Specialized refresh for IBM Bob OAuth tokens.
+ * POST {refresh_token} (JSON body) to /v1/auth/refresh — no client_id/secret,
+ * matching the exchange call. Response carries a fresh JWT `token`, decoded
+ * by the caller the same way as the initial login (see
+ * src/lib/oauth/providers/ibm-bob.ts::mapTokens).
+ */
+export async function refreshIbmBobToken(refreshToken: string, log, proxyConfig: unknown = null) {
+  const endpoint = PROVIDERS["ibm-bob"]?.refreshUrl;
+  if (!endpoint) {
+    log?.warn?.("TOKEN_REFRESH", "No refresh URL configured for IBM Bob");
+    return null;
+  }
+  if (!refreshToken) {
+    log?.warn?.("TOKEN_REFRESH", "No refresh token available for IBM Bob");
+    return null;
+  }
+
+  try {
+    const response = await runWithProxyContext(proxyConfig, () =>
+      fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      })
+    );
+
+    if (!response.ok) {
+      const { rawText, code } = await readRefreshErrorBody(response);
+      log?.error?.("TOKEN_REFRESH", "Failed to refresh IBM Bob token", {
+        status: response.status,
+        error: rawText.slice(0, 300),
+      });
+      if (code === "invalid_grant" || code === "invalid_request" || response.status === 401) {
+        return { error: "unrecoverable_refresh_error", code: code || "unauthorized" };
+      }
+      return null;
+    }
+
+    const data = await response.json();
+
+    log?.info?.("TOKEN_REFRESH", "Successfully refreshed IBM Bob token", {
+      hasNewAccessToken: !!data.token,
+      hasNewRefreshToken: !!data.refresh_token,
+    });
+
+    return {
+      accessToken: data.token,
+      refreshToken: data.refresh_token || refreshToken,
+      providerSpecificData: {
+        idpAccessToken: data.idp_access_token || null,
+        idpIdToken: data.idp_id_token || null,
+      },
+    };
+  } catch (error) {
+    log?.error?.(
+      "TOKEN_REFRESH",
+      `Network error refreshing IBM Bob token: ${error instanceof Error ? error.message : String(error)}`
     );
     return null;
   }
@@ -1562,6 +1622,9 @@ async function _getAccessTokenInternal(provider, credentials, log, proxyConfig: 
     case "codebuddy-cn":
       return await refreshCodebuddyCnToken(credentials.refreshToken, log, proxyConfig);
 
+    case "ibm-bob":
+      return await refreshIbmBobToken(credentials.refreshToken, log, proxyConfig);
+
     default:
       // Fallback to generic OAuth refresh for unknown providers
       return refreshAccessToken(provider, credentials.refreshToken, credentials, log, proxyConfig);
@@ -1590,6 +1653,7 @@ export function supportsTokenRefresh(provider) {
     "devin-cli",
     "gitlab-duo",
     "codebuddy-cn",
+    "ibm-bob",
   ]);
   if (explicitlySupported.has(provider)) return true;
   const config = PROVIDERS[provider];

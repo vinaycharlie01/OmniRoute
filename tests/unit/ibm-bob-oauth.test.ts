@@ -7,13 +7,14 @@
  * -only callback, which strictly rejects any other redirect_uri (confirmed
  * live: non-vscode redirect_uri -> 400 "Invalid redirect_uri").
  *
- * ibm-bob is recategorized OAuth-primary, matching Antigravity's pure-OAuth
- * UI treatment exactly: it is deliberately NOT in FREE_APIKEY_PROVIDER_IDS,
- * so the provider detail page's primary button reads "Add Connection" (not
- * "Add PAT") and opens the browser sign-in flow directly instead of the
- * manual API-key modal. See ProviderDetailPageClient.tsx's `isOAuth =
- * providerSupportsOAuth && !providerSupportsPat` — membership in
- * FREE_APIKEY_PROVIDER_IDS is what flips a provider away from that button.
+ * ibm-bob was briefly made OAuth-primary, but IBM's real /v1/auth/token
+ * exchange stayed unreachable ("Authentication required") in practice even
+ * with a byte-for-byte correct request (confirmed both server-side and via
+ * a direct curl outside this app). ibm-bob is back in FREE_APIKEY_PROVIDER_IDS
+ * so the provider detail page's primary button reads "Add PAT" and opens the
+ * manual API-key modal again — see ProviderDetailPageClient.tsx's `isOAuth =
+ * providerSupportsOAuth && !providerSupportsPat`. The OAuth code below still
+ * works and is exercised by these tests, it's just no longer the default flow.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -24,22 +25,22 @@ import { supportsTokenRefresh } from "../../open-sse/services/tokenRefresh.ts";
 import PROVIDERS_MAP from "../../src/lib/oauth/providers/index.ts";
 import { IBM_BOB_CONFIG } from "../../src/lib/oauth/constants/oauth.ts";
 
-test("ibm-bob is registered as an OAuth-primary provider in the UI catalog", () => {
+test("ibm-bob still has an OAuth catalog entry available", () => {
   const p = AI_PROVIDERS["ibm-bob"];
   assert.ok(p, "AI_PROVIDERS['ibm-bob'] must exist");
   assert.equal(p.id, "ibm-bob");
   assert.equal(p.name, "IBM Bob");
 });
 
-test("ibm-bob is NOT in FREE_APIKEY_PROVIDER_IDS, so its primary CTA is the OAuth 'Add Connection' button (like Antigravity), not 'Add PAT'", () => {
-  assert.equal(FREE_APIKEY_PROVIDER_IDS.has("ibm-bob"), false);
+test("ibm-bob is in FREE_APIKEY_PROVIDER_IDS, so its primary CTA is 'Add PAT', not the OAuth 'Add Connection' button", () => {
+  assert.equal(FREE_APIKEY_PROVIDER_IDS.has("ibm-bob"), true);
 });
 
-test("ibm-bob registry entry keeps its chat-completions shape and gains oauth endpoints", () => {
+test("ibm-bob registry entry serves chat completions via /inference/v1 with x-api-key, and still carries oauth endpoints", () => {
   const r = REGISTRY["ibm-bob"];
   assert.ok(r, "REGISTRY['ibm-bob'] must exist");
-  assert.equal(r.baseUrl, "https://api.us-east.bob.ibm.com/v1/chat/completions");
-  assert.equal(r.authHeader, "bearer");
+  assert.equal(r.baseUrl, "https://api.us-east.bob.ibm.com/inference/v1/chat/completions");
+  assert.equal(r.authHeader, "x-api-key");
   assert.equal(r.oauth?.tokenUrl, "https://api.us-east.bob.ibm.com/v1/auth/token");
   assert.equal(r.oauth?.refreshUrl, "https://api.us-east.bob.ibm.com/v1/auth/refresh");
 });

@@ -23,7 +23,12 @@ import {
   addModelsSuffix,
   resolveBaseUrl,
 } from "./validation/urlHelpers";
-import { STANDARD_USER_AGENT, directHttpsRequest, buildBearerHeaders } from "./validation/headers";
+import {
+  STANDARD_USER_AGENT,
+  directHttpsRequest,
+  buildBearerHeaders,
+  buildXApiKeyHeaders,
+} from "./validation/headers";
 import { validationRead, validationWrite, toValidationErrorResult } from "./validation/transport";
 import {
   validateDeepSeekWebProvider,
@@ -272,7 +277,38 @@ export async function validateProviderApiKey({ provider, apiKey, providerSpecifi
     // client, which never calls GET /models) — the generic OpenAI-like
     // validator's /models pre-check can false-negative a valid token if that
     // route isn't authorized for chat-scoped keys, so bypass it entirely.
-    "ibm-bob": buildOpengatewayValidator("https://api.us-east.bob.ibm.com/v1", "premium"),
+    // Unlike the other Opengateway-style providers, Bob's standalone API-key
+    // auth goes through the gateway's /inference/v1 service path with an
+    // `x-api-key` header, not `Authorization: Bearer` — confirmed against a
+    // working published reference client (github.com/Kynareth01/bob-proxy),
+    // so this can't reuse buildOpengatewayValidator/buildBearerHeaders as-is.
+    "ibm-bob": async ({ apiKey, providerSpecificData }: any) => {
+      try {
+        const baseUrl = normalizeBaseUrl(
+          providerSpecificData?.baseUrl || "https://api.us-east.bob.ibm.com/inference/v1"
+        );
+        const chatUrl = `${baseUrl.replace(/\/chat\/completions$/, "")}/chat/completions`;
+        const res = await validationWrite(
+          chatUrl,
+          {
+            method: "POST",
+            headers: buildXApiKeyHeaders(apiKey, providerSpecificData),
+            body: JSON.stringify({
+              model: "premium",
+              messages: [{ role: "user", content: "test" }],
+              max_tokens: 1,
+            }),
+          },
+          isLocal
+        );
+        if (res.status === 401 || res.status === 403) {
+          return { valid: false, error: "Invalid API key" };
+        }
+        return { valid: true, error: null };
+      } catch (error: any) {
+        return toValidationErrorResult(error);
+      }
+    },
     huggingface: validateHuggingFaceProvider,
     deepgram: validateDeepgramProvider,
     assemblyai: validateAssemblyAIProvider,

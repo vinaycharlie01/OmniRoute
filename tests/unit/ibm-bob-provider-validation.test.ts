@@ -5,21 +5,27 @@
  * GET /models first and would short-circuit to "Invalid API key" on any 401/403
  * there — a false negative if that route isn't authorized for chat-scoped
  * tokens even when the token is genuinely valid for chat completions. ibm-bob
- * is registered with the Opengateway-style validator (bypasses /models
- * entirely) instead of falling through to the generic default.
+ * has its own dedicated validator (bypasses /models entirely) instead of
+ * falling through to the generic default.
+ *
+ * The endpoint (/inference/v1, not /v1) and header (x-api-key, not
+ * Authorization: Bearer) are confirmed against a working published reference
+ * client (github.com/Kynareth01/bob-proxy) after the OAuth token exchange
+ * proved unreachable in practice.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
 
 const { validateProviderApiKey } = await import("../../src/lib/providers/validation.ts");
 
-test("ibm-bob validates via a single POST /chat/completions call (no /models probe)", async () => {
+test("ibm-bob validates via a single POST /chat/completions call (no /models probe), using x-api-key", async () => {
   const originalFetch = globalThis.fetch;
-  const calls: { url: string; method: string; body: unknown }[] = [];
+  const calls: { url: string; method: string; headers: Headers; body: unknown }[] = [];
   globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
     calls.push({
       url: String(url),
       method: init.method || "GET",
+      headers: new Headers(init.headers),
       body: init.body ? JSON.parse(init.body as string) : null,
     });
     return new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }] }), {
@@ -36,8 +42,10 @@ test("ibm-bob validates via a single POST /chat/completions call (no /models pro
     assert.equal(result.valid, true);
     assert.equal(calls.length, 1, "must not probe GET /models before the chat completions call");
     assert.equal(calls[0].method, "POST");
-    assert.equal(calls[0].url, "https://api.us-east.bob.ibm.com/v1/chat/completions");
+    assert.equal(calls[0].url, "https://api.us-east.bob.ibm.com/inference/v1/chat/completions");
     assert.equal((calls[0].body as { model: string }).model, "premium");
+    assert.equal(calls[0].headers.get("x-api-key"), "valid-bob-token");
+    assert.equal(calls[0].headers.get("Authorization"), null);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -75,10 +83,10 @@ test("ibm-bob honors a region-overridden base URL", async () => {
     const result = await validateProviderApiKey({
       provider: "ibm-bob",
       apiKey: "valid-bob-token",
-      providerSpecificData: { baseUrl: "https://api.eu-west.bob.ibm.com/v1" },
+      providerSpecificData: { baseUrl: "https://api.eu-west.bob.ibm.com/inference/v1" },
     });
     assert.equal(result.valid, true);
-    assert.equal(requestedUrl, "https://api.eu-west.bob.ibm.com/v1/chat/completions");
+    assert.equal(requestedUrl, "https://api.eu-west.bob.ibm.com/inference/v1/chat/completions");
   } finally {
     globalThis.fetch = originalFetch;
   }

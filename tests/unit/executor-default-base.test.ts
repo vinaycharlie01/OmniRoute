@@ -112,10 +112,7 @@ test("DefaultExecutor.buildUrl honors a custom providerSpecificData.baseUrl for 
   const openai = new DefaultExecutor("openai");
 
   // No override → hardcoded OpenAI endpoint (unchanged behavior).
-  assert.equal(
-    openai.buildUrl("gpt-4o", true),
-    "https://api.openai.com/v1/chat/completions"
-  );
+  assert.equal(openai.buildUrl("gpt-4o", true), "https://api.openai.com/v1/chat/completions");
 
   // Custom base URL (e.g. a proxy/gateway) must be used instead of api.openai.com.
   assert.equal(
@@ -357,6 +354,22 @@ test("DefaultExecutor.buildHeaders uses x-api-key for zai and glm-coding-apikey"
   assert.equal(glmHeaders["x-api-key"], "glm-key");
   assert.equal(zaiHeaders["Authorization"], undefined);
   assert.equal(glmHeaders["Authorization"], undefined);
+});
+
+test("DefaultExecutor routes ibm-bob through /inference/v1 with an x-api-key header", () => {
+  // A working published reference client (github.com/Kynareth01/bob-proxy)
+  // confirms the gateway is reached via /inference/v1/chat/completions with
+  // an x-api-key header, not /v1/chat/completions with Authorization: Bearer
+  // — the previous OAuth-derived-Bearer shape never worked against IBM's real
+  // backend in practice.
+  const ibmBob = new DefaultExecutor("ibm-bob");
+  const headers = ibmBob.buildHeaders({ apiKey: "bob-key" }, true);
+  assert.equal(headers["x-api-key"], "bob-key");
+  assert.equal(headers["Authorization"], undefined);
+  assert.equal(
+    ibmBob.buildUrl("premium", true),
+    "https://api.us-east.bob.ibm.com/inference/v1/chat/completions"
+  );
 });
 
 test("DefaultExecutor.buildHeaders handles Gemini and Claude auth modes", () => {

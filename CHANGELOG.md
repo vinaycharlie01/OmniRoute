@@ -6,6 +6,10 @@
 
 - **feat(providers): add IBM Bob gateway** — registers `ibm-bob` (IBM Bob / Bob Code, the LiteLLM-compatible enterprise gateway backing the IBM Bob VS Code extension) as a Bearer-auth, OpenAI-compatible provider with passthrough model routing. There is no public OAuth client to embed (Bob's VS Code extension signs in via IBM's own enterprise SSO), so users paste their own Bob access token as a plain API key, same as any other apikey gateway.
 
+### 🔧 Bug Fixes
+
+- **fix(docker): unblock the better-sqlite3 native rebuild under npm's script-allowlist gate** — the builder stage's `npm ci --ignore-scripts && npm rebuild better-sqlite3` step started failing on a from-scratch (cold cache) build with `Could not locate the bindings file`. Root cause: `npm install -g npm@latest` now resolves to npm 12, which introduced a script-allowlist gate that silently no-ops `npm rebuild <pkg>` for any package without a matching pinned entry in package.json's top-level `allowScripts` — so better-sqlite3's node-gyp rebuild never actually ran, leaving no compiled binding for the subsequent smoke-test `require()` to find. Added `"allowScripts": {"better-sqlite3@12.11.1": true}` to `package.json` (the exact version pinned in `package-lock.json`) via `npm install-scripts approve better-sqlite3`, plus a regression test that fails if the pinned version drifts from the lockfile on a future dependency bump.
+
 ---
 
 ## [3.8.39] — 2026-06-28

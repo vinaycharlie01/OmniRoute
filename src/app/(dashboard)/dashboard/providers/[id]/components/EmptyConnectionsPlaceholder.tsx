@@ -86,6 +86,15 @@ export default function EmptyConnectionsPlaceholder({
                   Experimental OAuth
                 </Button>
               )}
+              {providerId === "ibm-bob" && (
+                <Button
+                  variant="secondary"
+                  icon="key"
+                  onClick={() => gateConnectionFlow(openApiKeyAddFlow)}
+                >
+                  Paste API Token
+                </Button>
+              )}
               {providerId === "codex" && (
                 <Button
                   variant="secondary"

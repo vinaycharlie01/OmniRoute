@@ -284,6 +284,16 @@ export default function ConnectionsHeaderToolbar({
                     Experimental OAuth
                   </Button>
                 )}
+                {providerId === "ibm-bob" && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    icon="key"
+                    onClick={() => gateConnectionFlow(openApiKeyAddFlow)}
+                  >
+                    Paste API Token
+                  </Button>
+                )}
                 {providerId === "codex" && (
                   <Button
                     size="sm"

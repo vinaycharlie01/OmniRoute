@@ -79,6 +79,12 @@ test("base-url helpers run without throwing (transitive imports present)", () =>
   assert.doesNotThrow(() => isBaseUrlConfigurableProvider(null));
 });
 
+test("ibm-bob base URL is user-overridable (gateway hostname is region-qualified)", () => {
+  assert.equal(isBaseUrlConfigurableProvider("ibm-bob"), true);
+  assert.equal(getProviderBaseUrlDefault("ibm-bob"), "https://api.us-east.bob.ibm.com");
+  assert.equal(getProviderBaseUrlPlaceholder("ibm-bob"), "https://api.us-east.bob.ibm.com");
+});
+
 test("routing-tags / excluded-models parse + format round-trip", () => {
   assert.deepEqual(parseRoutingTagsInput("a, b ,c"), ["a", "b", "c"]);
   assert.equal(parseRoutingTagsInput("   "), undefined);

@@ -12,8 +12,11 @@ import {
   parseManualOAuthCallback,
   buildNoAuthCodeErrorMessage,
 } from "@/shared/components/oauthManualCallbackParse";
-
-const GOOGLE_OAUTH_PROVIDERS = new Set(["antigravity", "agy", "gemini-cli"]);
+import {
+  GOOGLE_OAUTH_PROVIDERS,
+  LOOPBACK_ONLY_OAUTH_PROVIDERS,
+  resolveOAuthModalRedirectUri,
+} from "@/shared/components/oauthRedirectUri";
 
 /** Providers that use a local callback server on a random port (PKCE browser flow). */
 const PKCE_CALLBACK_SERVER_PROVIDERS = new Set(["codex"]);
@@ -392,45 +395,15 @@ export default function OAuthModal({
         // Remote: fall through to standard auth code flow below
       }
 
-      // Authorization code flow
-      // Redirect URI strategy:
-      // - Codex/OpenAI: always port 1455 (registered in OAuth app)
-      // - Windsurf/Devin CLI (remote fallback): use localhost with OmniRoute port + /auth/callback
-      //   (on true localhost the callback server handles it; this is only reached on remote)
-      // - Google OAuth providers (antigravity, gemini-cli): default to loopback so the
-      //   bundled native/desktop credentials keep working. Prefer 127.0.0.1 over
-      //   localhost for the Google native-app handoff; Google documents that localhost
-      //   can run into local firewall/name-resolution edge cases. The authorize route
-      //   upgrades this to the public callback when custom Google web credentials plus
-      //   NEXT_PUBLIC_BASE_URL or OMNIROUTE_PUBLIC_BASE_URL are configured.
-      // - Other providers on remote: use actual origin (supports PUBLIC_URL env var)
-      // - Localhost: use localhost:port
-      let redirectUri: string;
-      if (provider === "codex" || provider === "openai") {
-        redirectUri = "http://localhost:1455/auth/callback";
-      } else if (provider === "windsurf" || provider === "devin-cli") {
-        // Remote fallback: use OmniRoute's port with the /auth/callback path Windsurf expects.
-        // On true localhost this code is never reached (callback server handles the flow above).
-        const port = window.location.port || "20128";
-        redirectUri = `http://localhost:${port}/auth/callback`;
-      } else if (GOOGLE_OAUTH_PROVIDERS.has(provider)) {
-        // Google OAuth built-in credentials only accept loopback redirect URIs.
-        // Even in remote deployments we use loopback — user copies the callback URL manually.
-        const port = window.location.port || "20128";
-        redirectUri = `http://127.0.0.1:${port}/callback`;
-      } else if (!isLocalhost) {
-        // Behind reverse proxy: use actual origin (e.g., https://omniroute.example.com/callback)
-        // Supports PUBLIC_URL env var override, or falls back to window.location.origin.
-        const publicUrl = process.env.NEXT_PUBLIC_BASE_URL;
-        const origin =
-          publicUrl && publicUrl !== "http://localhost:20128"
-            ? publicUrl.replace(/\/$/, "")
-            : window.location.origin;
-        redirectUri = `${origin}/callback`;
-      } else {
-        const port = window.location.port || (window.location.protocol === "https:" ? "443" : "80");
-        redirectUri = `http://localhost:${port}/callback`;
-      }
+      // Authorization code flow — redirect URI strategy lives in
+      // resolveOAuthModalRedirectUri (oauthRedirectUri.ts) for testability.
+      const redirectUri = resolveOAuthModalRedirectUri(provider, {
+        origin: window.location.origin,
+        port: window.location.port,
+        protocol: window.location.protocol,
+        isLocalhost,
+        publicBaseUrl: process.env.NEXT_PUBLIC_BASE_URL,
+      });
 
       const res = await fetch(
         `/api/oauth/${provider}/authorize?redirect_uri=${encodeURIComponent(redirectUri)}`
@@ -549,14 +522,10 @@ export default function OAuthModal({
 
       const payload = event.data?.data;
       const hasMatchingState = !!authData?.state && payload?.state === authData.state;
-      const isGoogleLoopbackRelay =
-        GOOGLE_OAUTH_PROVIDERS.has(provider) && isLoopbackOrigin && hasMatchingState;
+      const isLoopbackRelay =
+        LOOPBACK_ONLY_OAUTH_PROVIDERS.has(provider) && isLoopbackOrigin && hasMatchingState;
 
-      if (
-        event.origin !== window.location.origin &&
-        !isLocalhostSamePort &&
-        !isGoogleLoopbackRelay
-      ) {
+      if (event.origin !== window.location.origin && !isLocalhostSamePort && !isLoopbackRelay) {
         return;
       }
       if (event.data?.type === "oauth_callback") {

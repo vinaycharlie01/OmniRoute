@@ -83,6 +83,12 @@ test("ibm-bob exchangeToken POSTs a bare {code} body with no client secret", asy
     const body = JSON.parse(calls[0].init?.body as string);
     assert.deepEqual(body, { code: "auth-code-xyz" });
     assert.equal(tokens.token.startsWith("eyJ"), true);
+    // Regression guard: the gateway 401s with {"message":"Authentication
+    // required","error":"unauthorized"} when this header is missing (confirmed
+    // live) — it is not optional decoration, it's how the client authenticates
+    // to this code-only, no-secret token endpoint.
+    const headers = new Headers(calls[0].init?.headers);
+    assert.equal(headers.get("User-Agent"), IBM_BOB_CONFIG.userAgent);
   } finally {
     globalThis.fetch = origFetch;
   }
@@ -132,6 +138,8 @@ test("refreshIbmBobToken POSTs {refresh_token} and returns the new token", async
     assert.deepEqual(body, { refresh_token: "old-refresh" });
     assert.equal(result?.accessToken, "new-jwt");
     assert.equal(result?.refreshToken, "new-refresh");
+    const headers = new Headers(calls[0].init?.headers);
+    assert.equal(headers.get("User-Agent"), IBM_BOB_CONFIG.userAgent);
   } finally {
     globalThis.fetch = origFetch;
   }

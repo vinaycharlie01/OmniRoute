@@ -5,7 +5,7 @@ import { getGitHubCopilotRefreshHeaders } from "../config/providerHeaderProfiles
 import { pbkdf2Sync } from "node:crypto";
 import { runWithProxyContext } from "../utils/proxyFetch.ts";
 import { serializeRefresh } from "./refreshSerializer.ts";
-import { WINDSURF_CONFIG } from "@/lib/oauth/constants/oauth";
+import { WINDSURF_CONFIG, IBM_BOB_CONFIG } from "@/lib/oauth/constants/oauth";
 import { buildGitLabOAuthEndpoints, resolveGitLabOAuthBaseUrl } from "@/lib/oauth/gitlab";
 
 // Default token expiry buffer (refresh if expires within 5 minutes).
@@ -835,7 +835,11 @@ export async function refreshIbmBobToken(refreshToken: string, log, proxyConfig:
     const response = await runWithProxyContext(proxyConfig, () =>
       fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "User-Agent": IBM_BOB_CONFIG.userAgent,
+        },
         body: JSON.stringify({ refresh_token: refreshToken }),
       })
     );

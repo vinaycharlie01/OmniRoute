@@ -10,10 +10,7 @@ import {
   providerAllowsOptionalApiKey,
   WEB_COOKIE_PROVIDERS,
 } from "@/shared/constants/providers";
-import {
-  SAFE_OUTBOUND_FETCH_PRESETS,
-  safeOutboundFetch,
-} from "@/shared/network/safeOutboundFetch";
+import { SAFE_OUTBOUND_FETCH_PRESETS, safeOutboundFetch } from "@/shared/network/safeOutboundFetch";
 import { getProviderOutboundGuard } from "@/shared/network/outboundUrlGuard";
 import { resolveNvidiaValidationModel } from "@/lib/providers/nvidiaValidationModel";
 import { validateQoderCliPat } from "@omniroute/open-sse/services/qoderCli.ts";
@@ -26,16 +23,8 @@ import {
   addModelsSuffix,
   resolveBaseUrl,
 } from "./validation/urlHelpers";
-import {
-  STANDARD_USER_AGENT,
-  directHttpsRequest,
-  buildBearerHeaders,
-} from "./validation/headers";
-import {
-  validationRead,
-  validationWrite,
-  toValidationErrorResult,
-} from "./validation/transport";
+import { STANDARD_USER_AGENT, directHttpsRequest, buildBearerHeaders } from "./validation/headers";
+import { validationRead, validationWrite, toValidationErrorResult } from "./validation/transport";
 import {
   validateDeepSeekWebProvider,
   validateQwenWebProvider,
@@ -81,10 +70,7 @@ import {
   validateNousResearchProvider,
   validatePoeProvider,
 } from "./validation/audioMiscProviders";
-import {
-  validateSearchProvider,
-  SEARCH_VALIDATOR_CONFIGS,
-} from "./validation/searchProviders";
+import { validateSearchProvider, SEARCH_VALIDATOR_CONFIGS } from "./validation/searchProviders";
 import {
   validateClarifaiProvider,
   validateEmbeddingApiProvider,
@@ -281,6 +267,12 @@ export async function validateProviderApiKey({ provider, apiKey, providerSpecifi
       }
     },
     "command-code": validateCommandCodeProvider,
+    // IBM Bob's gateway only ever serves POST /chat/completions with the
+    // "premium" model alias (confirmed from the Bob VS Code extension's own
+    // client, which never calls GET /models) — the generic OpenAI-like
+    // validator's /models pre-check can false-negative a valid token if that
+    // route isn't authorized for chat-scoped keys, so bypass it entirely.
+    "ibm-bob": buildOpengatewayValidator("https://api.us-east.bob.ibm.com/v1", "premium"),
     huggingface: validateHuggingFaceProvider,
     deepgram: validateDeepgramProvider,
     assemblyai: validateAssemblyAIProvider,

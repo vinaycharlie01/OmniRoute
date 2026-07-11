@@ -251,7 +251,10 @@ export async function GET(
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (error) {
     console.error("OAuth GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: sanitizeErrorMessage(error?.message ?? error) || "Internal server error" },
+      { status: 500 }
+    );
   }
 }
 
@@ -903,7 +906,10 @@ export async function POST(
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (error) {
     console.error("OAuth POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: sanitizeErrorMessage(error?.message ?? error) || "Internal server error" },
+      { status: 500 }
+    );
   }
 }
 

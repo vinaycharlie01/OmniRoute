@@ -236,8 +236,13 @@ export const DEFAULT_PROVIDER_BASE_URLS: Record<string, string> = {
   petals: "https://chat.petals.dev/api/v1/generate",
   // IBM Bob's gateway hostname is region-qualified ("us-east"); tenants
   // provisioned to a different IBM region use a different hostname, so the
-  // base URL is user-overridable rather than hardcoded as fixed.
-  "ibm-bob": "https://api.us-east.bob.ibm.com",
+  // base URL is user-overridable rather than hardcoded as fixed. This is used
+  // as the actual pre-filled form value (not just a placeholder) in
+  // AddApiKeyModal, and that value wins over the validator/executor's
+  // internal default when submitted — it MUST include /inference/v1, the
+  // gateway's actual chat-completions service path (a host-only value here
+  // broke every new ibm-bob connection with a false "Invalid API key").
+  "ibm-bob": "https://api.us-east.bob.ibm.com/inference/v1",
 };
 
 export function getLocalProviderMetadata(providerId?: string | null) {

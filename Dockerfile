@@ -1,17 +1,26 @@
-# ── Common base with runtime deps ──────────────────────────────────────────
-FROM node:24-trixie-slim AS base
+# ── Common base with runtime deps (Alpine/musl — lean default path) ────────
+#
+# Alpine cuts the base OS layer dramatically vs. Debian-slim (musl libc,
+# busybox, apk instead of a full Debian userland). better-sqlite3 is a native
+# addon and MUST be compiled for the libc it will run under — the
+# npm rebuild step below already forces a from-source compile (never a
+# downloaded prebuilt), so it produces a musl-correct binary here automatically.
+#
+# runner-web (Playwright/Chromium) does NOT extend this chain: Playwright's
+# Chromium builds are not supported on Alpine/musl (upstream limitation), so
+# it has its own glibc (Debian-slim) chain below — see "base-glibc". Keep the
+# two chains independent; don't try to make runner-web depend on this stage.
+FROM node:24-alpine AS base
 WORKDIR /app
 
-# `apt-get upgrade` pulls the security-patched versions of the Debian (trixie)
-# base-image packages at build time — clears the subset of container-scan CVEs
-# (perl / util-linux / systemd / ncurses / zlib / tar / sqlite / shadow / pam …)
-# that already have a fix published in trixie. CVEs without an upstream fix yet
-# (local-only TOCTOU, etc.) remain until the distro patches them and the image
-# is rebuilt; none are reachable from the proxy's request surface at runtime.
-RUN apt-get update \
-  && apt-get upgrade -y \
-  && apt-get install -y --no-install-recommends libsecret-1-0 ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
+# `apk upgrade` pulls security-patched versions of the Alpine base-image
+# packages at build time, mirroring the Debian `apt-get upgrade` hygiene this
+# image used to rely on. `--no-cache` fetches a temporary index and discards
+# it in the same layer, so there's no separate lists-cleanup step needed
+# (unlike apt).
+RUN apk update \
+  && apk upgrade --no-cache \
+  && apk add --no-cache libsecret ca-certificates
 
 # Refresh the globally-installed npm so its *bundled* node_modules (undici, tar)
 # ship the patched versions. These are npm's own internals — not application
@@ -22,14 +31,11 @@ RUN apt-get update \
 RUN npm install -g npm@latest \
   && npm cache clean --force
 
-# ── Builder ────────────────────────────────────────────────────────────────
+# ── Builder (Alpine) ────────────────────────────────────────────────────────
 FROM base AS builder
 
-# Build tools for native module compilation
-# apt-get update needed here because base's rm -rf clears the shared cache
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 make g++ \
-  && rm -rf /var/lib/apt/lists/*
+# Build tools for native module compilation (node-gyp needs these on musl too).
+RUN apk add --no-cache python3 make g++
 
 COPY package*.json ./
 # Workspace package manifests MUST be present before `npm ci` so npm materializes
@@ -82,7 +88,7 @@ ENV NODE_OPTIONS="--max-old-space-size=${OMNIROUTE_BUILD_MEMORY_MB}"
 COPY . ./
 RUN mkdir -p /app/data && npm run build
 
-# ── Runner base ────────────────────────────────────────────────────────────
+# ── Runner base (Alpine) ─────────────────────────────────────────────────────
 FROM base AS runner-base
 
 LABEL org.opencontainers.image.title="omniroute" \
@@ -135,18 +141,21 @@ COPY --from=builder /app/scripts/dev/webdav-handler.mjs ./webdav-handler.mjs
 # it explicitly. The HEALTHCHECK CMD references it as `node healthcheck.mjs`.
 COPY --from=builder /app/scripts/dev/healthcheck.mjs ./healthcheck.mjs
 
-# Hand /app over to the baked-in `node` non-root user (UID/GID 1000) so the
-# runtime process never holds root privileges. The chown happens after all
-# COPYs so it covers files originally owned by root in the builder stage.
+# Hand /app over to the baked-in `node` non-root user (UID/GID 1000 — the
+# official node:alpine image ships the same node user/group as the Debian
+# variant) so the runtime process never holds root privileges. The chown
+# happens after all COPYs so it covers files originally owned by root in the
+# builder stage.
 RUN chown -R node:node /app
 
 EXPOSE 20128
 
-# Drop to non-root before ENTRYPOINT/CMD so every derived stage (runner-cli,
-# runner-web) also runs as a non-root user unless they explicitly switch back.
+# Drop to non-root before ENTRYPOINT/CMD so every derived stage (runner-cli)
+# also runs as a non-root user unless it explicitly switches back.
 USER node
 
-# Warns if the mounted data volume has wrong ownership
+# Warns if the mounted data volume has wrong ownership. Already POSIX
+# /bin/sh-only (no bashisms), so it runs unmodified under Alpine's busybox ash.
 COPY --chmod=755 scripts/check-permissions.sh /tmp/check-permissions.sh
 ENTRYPOINT ["/tmp/check-permissions.sh"]
 
@@ -155,11 +164,75 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 
 CMD ["node", "dev/run-standalone.mjs"]
 
+FROM runner-base AS runner-cli
+
+# Drop back to root briefly so we can install system + global npm packages,
+# then return to the `node` non-root user before the CMD inherited from
+# runner-base runs.
+USER root
+
+# Install system dependencies required by openclaw (git+ssh references).
+# docker-cli / docker-cli-compose are the Alpine package names for the Docker
+# CLI client and the `docker compose` v2 plugin (no daemon is run in-container).
+RUN apk add --no-cache git ca-certificates docker-cli docker-cli-compose \
+  && git config --system url."https://github.com/".insteadOf "ssh://git@github.com/"
+
+# Install CLI tools globally. Separate layer from apt for better cache reuse.
+# NOTE: these packages were previously only ever installed on glibc (Debian);
+# if any ship a native postinstall step that assumes glibc, re-validate this
+# stage specifically after the Alpine switch.
+RUN npm install -g --no-audit --no-fund @openai/codex @anthropic-ai/claude-code droid openclaw@latest
+
+USER node
+
+# ── glibc chain (Debian-slim) — Playwright/Chromium is not supported on
+# Alpine/musl, so runner-web gets its own independent build from here down.
+# This duplicates the base+builder setup above; that duplication is the actual
+# cost of keeping web-cookie providers working while the default images move
+# to Alpine. Do not attempt to merge this back into the Alpine chain.
+# ─────────────────────────────────────────────────────────────────────────
+FROM node:24-trixie-slim AS base-glibc
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get upgrade -y \
+  && apt-get install -y --no-install-recommends libsecret-1-0 ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g npm@latest \
+  && npm cache clean --force
+
+FROM base-glibc AS builder-glibc
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY package*.json ./
+COPY open-sse/package.json ./open-sse/package.json
+COPY scripts/build/postinstall.mjs ./scripts/build/postinstall.mjs
+COPY scripts/build/postinstallSupport.mjs ./scripts/build/postinstallSupport.mjs
+COPY scripts/build/native-binary-compat.mjs ./scripts/build/native-binary-compat.mjs
+ENV NPM_CONFIG_LEGACY_PEER_DEPS=true
+RUN test -f package-lock.json \
+  || (echo "package-lock.json is required for reproducible Docker builds" >&2 && exit 1)
+RUN npm ci --no-audit --no-fund --legacy-peer-deps --ignore-scripts \
+  && npm rebuild better-sqlite3 \
+  && node -e "require('better-sqlite3')(':memory:').close()"
+
+ENV OMNIROUTE_USE_TURBOPACK=0
+ARG OMNIROUTE_BUILD_MEMORY_MB=4096
+ENV NODE_OPTIONS="--max-old-space-size=${OMNIROUTE_BUILD_MEMORY_MB}"
+
+COPY . ./
+RUN mkdir -p /app/data && npm run build
+
 # ── Runner Web (web-cookie providers: Gemini Web, Claude Turnstile) ───────────
 #
-#  Two image flavors:
-#    runner-base  →  omniroute:VERSION        Lean base (~500 MB). No browsers.
-#    runner-web   →  omniroute:VERSION-web    +Chromium/Playwright (~800 MB).
+#  Three image flavors:
+#    runner-base  →  omniroute:VERSION        Lean Alpine base. No browsers.
+#    runner-cli   →  omniroute:VERSION-cli     +codex/claude-code/droid/openclaw CLIs (Alpine).
+#    runner-web   →  omniroute:VERSION-web     +Chromium/Playwright (glibc/Debian-slim).
 #
 #  Use runner-web when you need web-cookie providers (gemini-web, claude-web,
 #  claude-turnstile). For all other providers runner-base is sufficient.
@@ -170,17 +243,48 @@ CMD ["node", "dev/run-standalone.mjs"]
 #    build:
 #      context: .
 #      target: runner-web
-FROM runner-base AS runner-web
+FROM base-glibc AS runner-web
 
-USER root
+LABEL org.opencontainers.image.title="omniroute" \
+  org.opencontainers.image.description="Unified AI proxy — route any LLM through one endpoint" \
+  org.opencontainers.image.url="https://omniroute.online" \
+  org.opencontainers.image.source="https://github.com/diegosouzapw/OmniRoute" \
+  org.opencontainers.image.licenses="MIT"
 
-# Copy playwright and playwright-core from the builder stage.
+ENV NODE_ENV=production
+ENV PORT=20128
+ENV HOSTNAME=0.0.0.0
+ENV HOST=0.0.0.0
+ENV OMNIROUTE_MEMORY_MB=1024
+ENV NODE_OPTIONS="--max-old-space-size=${OMNIROUTE_MEMORY_MB}"
+ENV DATA_DIR=/app/data
+RUN mkdir -p /app/data
+
+COPY --from=builder-glibc /app/.build/next/standalone ./
+COPY --from=builder-glibc /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
+ENV OMNIROUTE_MIGRATIONS_DIR=/app/migrations
+
+COPY --from=builder-glibc /app/scripts/dev/run-standalone.mjs ./dev/run-standalone.mjs
+COPY --from=builder-glibc /app/scripts/build/runtime-env.mjs ./build/runtime-env.mjs
+COPY --from=builder-glibc /app/scripts/build/bootstrap-env.mjs ./build/bootstrap-env.mjs
+COPY --from=builder-glibc /app/scripts/dev/standalone-server-ws.mjs ./server-ws.mjs
+COPY --from=builder-glibc /app/scripts/dev/peer-stamp.mjs ./peer-stamp.mjs
+COPY --from=builder-glibc /app/scripts/dev/http-method-guard.cjs ./http-method-guard.cjs
+COPY --from=builder-glibc /app/scripts/dev/responses-ws-proxy.mjs ./responses-ws-proxy.mjs
+COPY --from=builder-glibc /app/scripts/dev/webdav-handler.mjs ./webdav-handler.mjs
+COPY --from=builder-glibc /app/scripts/dev/healthcheck.mjs ./healthcheck.mjs
+
+RUN chown -R node:node /app
+
+EXPOSE 20128
+
+# Copy playwright and playwright-core from the glibc builder stage.
 # The slim runtime image does not have playwright in node_modules, so npx falls
 # back to a registry download — unreliable on CI runners (exits 127 on failure).
 # Copying from the builder avoids any network access at image-build time and also
 # ensures the same playwright version is available at runtime for web-session providers.
-COPY --from=builder /app/node_modules/playwright-core ./node_modules/playwright-core
-COPY --from=builder /app/node_modules/playwright ./node_modules/playwright
+COPY --from=builder-glibc /app/node_modules/playwright-core ./node_modules/playwright-core
+COPY --from=builder-glibc /app/node_modules/playwright ./node_modules/playwright
 
 # Install Playwright browser binaries + OS dependencies under root, then hand
 # ownership of the browsers cache to the node user.
@@ -195,20 +299,10 @@ RUN apt-get update \
 
 USER node
 
-FROM runner-base AS runner-cli
+COPY --chmod=755 scripts/check-permissions.sh /tmp/check-permissions.sh
+ENTRYPOINT ["/tmp/check-permissions.sh"]
 
-# Drop back to root briefly so we can install system + global npm packages,
-# then return to the `node` non-root user before the CMD inherited from
-# runner-base runs.
-USER root
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD ["node", "healthcheck.mjs"]
 
-# Install system dependencies required by openclaw (git+ssh references).
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends git ca-certificates docker.io docker-compose \
-  && rm -rf /var/lib/apt/lists/* \
-  && git config --system url."https://github.com/".insteadOf "ssh://git@github.com/"
-
-# Install CLI tools globally. Separate layer from apt for better cache reuse.
-RUN npm install -g --no-audit --no-fund @openai/codex @anthropic-ai/claude-code droid openclaw@latest
-
-USER node
+CMD ["node", "dev/run-standalone.mjs"]

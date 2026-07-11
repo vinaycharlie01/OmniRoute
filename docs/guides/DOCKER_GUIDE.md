@@ -137,19 +137,26 @@ The prod stack runs in parallel with the dev compose (different container names,
 
 ## Dockerfile Stages
 
-The repository ships a multi-stage Dockerfile (`Dockerfile`). Three stages are exposed; pick the right `target` for your use case.
+The repository ships a multi-stage Dockerfile (`Dockerfile`). Four stages are exposed; pick the right `target` for your use case.
 
-| Stage         | Base image                 | Purpose                                                                                                                                                            |
-| ------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `builder`     | `node:24.15.0-trixie-slim` | Installs deps (`npm ci --legacy-peer-deps`) and runs `npm run build -- --webpack`                                                                                  |
-| `runner-base` | `node:24.15.0-trixie-slim` | Production runtime with the Next.js standalone output. **No provider CLIs bundled.**                                                                               |
-| `runner-cli`  | `runner-base`              | Adds `git`, `docker.io`, `docker-compose` and global CLIs: `@openai/codex`, `@anthropic-ai/claude-code`, `droid`, `openclaw`. **Pick this for agentic workflows.** |
+`runner-base`/`runner-cli` build on Alpine (musl) for a much smaller image.
+`runner-web` needs Playwright/Chromium, which is not supported on Alpine, so it
+builds on its own independent Debian-slim (glibc) chain (`base-glibc` →
+`builder-glibc`) instead of extending `runner-base`.
+
+| Stage         | Base image            | Purpose                                                                                                                                                                 |
+| ------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `builder`     | `node:24-alpine`      | Installs deps (`npm ci --legacy-peer-deps`) and runs `npm run build -- --webpack`                                                                                       |
+| `runner-base` | `node:24-alpine`      | Production runtime with the Next.js standalone output. **No provider CLIs bundled.**                                                                                    |
+| `runner-cli`  | `runner-base`         | Adds `git`, `docker-cli`, `docker-cli-compose` and global CLIs: `@openai/codex`, `@anthropic-ai/claude-code`, `droid`, `openclaw`. **Pick this for agentic workflows.** |
+| `runner-web`  | `node:24-trixie-slim` | `runner-base` + Playwright/Chromium, for web-cookie providers (Gemini Web, Claude Web/Turnstile).                                                                       |
 
 Build a specific target manually:
 
 ```bash
 docker build --target runner-base -t omniroute:base .
 docker build --target runner-cli  -t omniroute:cli  .
+docker build --target runner-web  -t omniroute:web  .
 ```
 
 Defaults exported by `runner-base`: `PORT=20128`, `HOSTNAME=0.0.0.0`, `NODE_OPTIONS=--max-old-space-size=512`, `DATA_DIR=/app/data`, `OMNIROUTE_MIGRATIONS_DIR=/app/migrations`.

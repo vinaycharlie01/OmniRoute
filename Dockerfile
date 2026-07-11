@@ -46,6 +46,11 @@ ENV NPM_CONFIG_LEGACY_PEER_DEPS=true
 # the supply-chain attack surface where a transitive dep can run arbitrary code
 # at install time. better-sqlite3 still needs a native binding for the target
 # platform, so rebuild and smoke-test only that known runtime dependency below.
+# npm's script-allowlist gate (introduced npm 12) blocks `npm rebuild <pkg>`
+# too, not just `ci` — better-sqlite3's node-gyp rebuild is a silent no-op
+# without a matching entry in package.json's top-level "allowScripts", so the
+# smoke-test node -e require() below fails with "Could not locate the
+# bindings file" if that entry is missing or its pinned version is stale.
 #
 # We REQUIRE a committed package-lock.json so resolved dependency versions
 # are reproducible.

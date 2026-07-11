@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { REGISTRY } from "../../open-sse/config/providerRegistry.ts";
 import { getModelsByProviderId } from "../../src/shared/constants/models.ts";
-import { APIKEY_PROVIDERS } from "../../src/shared/constants/providers.ts";
+import { APIKEY_PROVIDERS, AI_PROVIDERS } from "../../src/shared/constants/providers.ts";
 
 const CHAT_OPENAI_COMPAT_PROVIDER_IDS = [
   "deepinfra",
@@ -42,8 +42,12 @@ const CHAT_OPENAI_COMPAT_PROVIDER_IDS = [
   "reka",
   "byteplus",
   "orcarouter",
-  "ibm-bob",
 ];
+
+// ibm-bob is checked separately below: it's OAuth-primary (recategorized so
+// bob.ibm.com/login is the default sign-in path), so its UI metadata lives in
+// AI_PROVIDERS (backed by OAUTH_PROVIDERS), not APIKEY_PROVIDERS like the
+// providers above — but the chat request shape (registry/models) is identical.
 
 test("chat-openai-compat providers are registered across provider metadata, registry and local catalog", () => {
   for (const providerId of CHAT_OPENAI_COMPAT_PROVIDER_IDS) {
@@ -79,7 +83,10 @@ test("ibm-bob is a Bearer-auth OpenAI-compatible gateway with passthrough enable
 
   const modelIds = REGISTRY["ibm-bob"].models.map((model) => model.id);
   assert.ok(modelIds.includes("premium"), "expected the default 'premium' model alias");
-  assert.equal(APIKEY_PROVIDERS["ibm-bob"].passthroughModels, true);
+  assert.equal(AI_PROVIDERS["ibm-bob"].passthroughModels, true);
+
+  const models = getModelsByProviderId("ibm-bob");
+  assert.ok(Array.isArray(models) && models.length > 0, "ibm-bob models must not be empty");
 });
 
 test("upstage chat catalog does not include non-chat specialty models", () => {

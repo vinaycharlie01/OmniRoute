@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### ✨ New Features
+
+- **feat(providers): add IBM Bob gateway** — registers `ibm-bob` (IBM Bob / Bob Code, the LiteLLM-compatible enterprise gateway backing the IBM Bob VS Code extension) as a Bearer-auth, OpenAI-compatible provider with passthrough model routing. There is no public OAuth client to embed (Bob's VS Code extension signs in via IBM's own enterprise SSO), so users paste their own Bob access token as a plain API key, same as any other apikey gateway.
+
 ---
 
 ## [3.8.39] — 2026-06-28

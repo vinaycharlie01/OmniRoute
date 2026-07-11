@@ -40,6 +40,26 @@ export const APIKEY_PROVIDERS_GATEWAYS = {
     hasFree: true,
     freeNote: "Free models at $0/token with :free suffix - 20 RPM / 200 RPD",
   },
+  "ibm-bob": {
+    id: "ibm-bob",
+    alias: "ibm-bob",
+    name: "IBM Bob",
+    icon: "hub",
+    color: "#617A91",
+    textIcon: "IB",
+    passthroughModels: true,
+    website: "https://bob.ibm.com",
+    authHint:
+      "Bearer API key for the IBM Bob (Bob Code) LiteLLM-compatible gateway. Sign in through " +
+      "the IBM Bob VS Code extension or Bob Shell to obtain your access token — OmniRoute does " +
+      "not perform the IBM enterprise SSO login itself.",
+    apiHint:
+      "IBM Bob exposes an OpenAI-compatible chat completions endpoint, defaulting to " +
+      "https://api.us-east.bob.ibm.com/v1/chat/completions. The hostname is region-qualified " +
+      '("us-east") — if your IBM Bob account was provisioned to a different region, override ' +
+      "the base URL below to match. Requires an active IBM Bob subscription; the default " +
+      'routed model alias is "premium".',
+  },
   dgrid: {
     id: "dgrid",
     alias: "dgrid",

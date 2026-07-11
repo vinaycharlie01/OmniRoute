@@ -42,6 +42,7 @@ const CHAT_OPENAI_COMPAT_PROVIDER_IDS = [
   "reka",
   "byteplus",
   "orcarouter",
+  "ibm-bob",
 ];
 
 test("chat-openai-compat providers are registered across provider metadata, registry and local catalog", () => {
@@ -68,6 +69,17 @@ test("orcarouter models keep the orcarouter/ namespace prefix and enable passthr
 
   // The 150+ catalog beyond the curated flagship list is reachable via passthrough.
   assert.equal(APIKEY_PROVIDERS.orcarouter.passthroughModels, true);
+});
+
+test("ibm-bob is a Bearer-auth OpenAI-compatible gateway with passthrough enabled", () => {
+  assert.equal(REGISTRY["ibm-bob"].format, "openai");
+  assert.equal(REGISTRY["ibm-bob"].authType, "apikey");
+  assert.equal(REGISTRY["ibm-bob"].authHeader, "bearer");
+  assert.equal(REGISTRY["ibm-bob"].baseUrl, "https://api.us-east.bob.ibm.com/v1/chat/completions");
+
+  const modelIds = REGISTRY["ibm-bob"].models.map((model) => model.id);
+  assert.ok(modelIds.includes("premium"), "expected the default 'premium' model alias");
+  assert.equal(APIKEY_PROVIDERS["ibm-bob"].passthroughModels, true);
 });
 
 test("upstage chat catalog does not include non-chat specialty models", () => {

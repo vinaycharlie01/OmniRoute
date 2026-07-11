@@ -6,8 +6,13 @@ import { IBM_BOB_CONFIG } from "../constants/oauth";
  *
  * Matches the newer Bob VS Code extension bundle's own client: it builds
  * `${webLoginUrl}/login?callback_uri=<redirect>&state=<uuid>`, then exchanges
- * the returned `code` with a bare `{code}` POST body (no PKCE code_verifier,
- * no client secret) against `${gatewayBaseUrl}/v1/auth/token`.
+ * the returned `code` with a `{code, callback_uri}` POST body (no PKCE
+ * code_verifier, no client secret) against `${gatewayBaseUrl}/v1/auth/token`.
+ *
+ * The gateway validates that callback_uri matches the one supplied during
+ * authorization (standard OAuth 2.0 RFC 6749 §4.1.3 redirect_uri binding).
+ * Omitting callback_uri — or the User-Agent header — produces a 401
+ * `{"message":"Authentication required","error":"unauthorized"}`.
  */
 export const ibmBob = {
   config: IBM_BOB_CONFIG,
@@ -16,7 +21,11 @@ export const ibmBob = {
     const params = new URLSearchParams({ callback_uri: redirectUri, state });
     return `${config.webLoginUrl}/login?${params.toString()}`;
   },
-  exchangeToken: async (config: typeof IBM_BOB_CONFIG, code: string) => {
+  exchangeToken: async (config: typeof IBM_BOB_CONFIG, code: string, redirectUri?: string) => {
+    const body: Record<string, string> = { code };
+    if (redirectUri) {
+      body.callback_uri = redirectUri;
+    }
     const response = await fetch(config.tokenUrl, {
       method: "POST",
       headers: {
@@ -24,7 +33,7 @@ export const ibmBob = {
         Accept: "application/json",
         "User-Agent": config.userAgent,
       },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {

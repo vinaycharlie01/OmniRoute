@@ -154,6 +154,7 @@ export const oauthExchangeSchema = z.object({
   code: z.string().trim().min(1),
   redirectUri: z.string().trim().min(1),
   codeVerifier: z.string().trim().min(1).optional(),
+  connectionId: z.string().optional(),
   state: z.string().nullable().optional(),
 });
 

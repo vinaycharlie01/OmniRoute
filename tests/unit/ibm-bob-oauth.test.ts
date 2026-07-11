@@ -57,7 +57,7 @@ test("ibm-bob OAuth provider builds the bob.ibm.com/login authorize URL", () => 
   assert.equal(parsed.searchParams.get("state"), "state-123");
 });
 
-test("ibm-bob exchangeToken POSTs a bare {code} body with no client secret", async () => {
+test("ibm-bob exchangeToken POSTs {code, callback_uri} with the User-Agent header", async () => {
   const map = PROVIDERS_MAP as Record<string, any>;
   const provider = map["ibm-bob"];
   const origFetch = globalThis.fetch;
@@ -76,12 +76,15 @@ test("ibm-bob exchangeToken POSTs a bare {code} body with no client secret", asy
   }) as typeof fetch;
 
   try {
-    const tokens = await provider.exchangeToken(IBM_BOB_CONFIG, "auth-code-xyz");
+    const redirectUri = "http://127.0.0.1:20128/callback";
+    const tokens = await provider.exchangeToken(IBM_BOB_CONFIG, "auth-code-xyz", redirectUri);
     assert.equal(calls.length, 1);
     assert.equal(calls[0].url, "https://api.us-east.bob.ibm.com/v1/auth/token");
     assert.equal(calls[0].init?.method, "POST");
     const body = JSON.parse(calls[0].init?.body as string);
-    assert.deepEqual(body, { code: "auth-code-xyz" });
+    // Regression guard: the gateway 401s when callback_uri is missing — it validates
+    // the redirect URI against the one from the authorization request (RFC 6749 §4.1.3).
+    assert.deepEqual(body, { code: "auth-code-xyz", callback_uri: redirectUri });
     assert.equal(tokens.token.startsWith("eyJ"), true);
     // Regression guard: the gateway 401s with {"message":"Authentication
     // required","error":"unauthorized"} when this header is missing (confirmed

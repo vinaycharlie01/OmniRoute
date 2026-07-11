@@ -45,10 +45,6 @@ export const FREE_APIKEY_PROVIDER_IDS = new Set([
   // API key (Authorization: Bearer). Admit it through the same managed-provider
   // gate so POST /api/providers accepts the dual-auth shape.
   "codebuddy-cn",
-  // ibm-bob is OAuth-primary (bob.ibm.com/login) but also accepts a directly
-  // pasted Bearer access token for users who already have one, or whose
-  // deployment can't reach bob.ibm.com's login page.
-  "ibm-bob",
 ]);
 
 export function supportsApiKeyOnFreeProvider(providerId: unknown): boolean {

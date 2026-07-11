@@ -8,6 +8,10 @@ import Input from "./Input";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { parseResponseBody, getErrorMessage } from "@/shared/utils/api";
 import { isCredentialBlob, submitCredentialBlob } from "@/shared/components/oauthBlobSubmit";
+import {
+  parseManualOAuthCallback,
+  buildNoAuthCodeErrorMessage,
+} from "@/shared/components/oauthManualCallbackParse";
 
 const GOOGLE_OAUTH_PROVIDERS = new Set(["antigravity", "agy", "gemini-cli"]);
 
@@ -665,32 +669,19 @@ export default function OAuthModal({
       }
 
       const input = callbackUrl.trim();
-      let code = null;
-      let state = authData?.state || null;
-      let errorParam = null;
-      let errorDescription = null;
-
-      try {
-        const url = new URL(input);
-        code = url.searchParams.get("code");
-        state = url.searchParams.get("state") || url.hash.replace(/^#/, "") || state;
-        errorParam = url.searchParams.get("error");
-        errorDescription = url.searchParams.get("error_description");
-      } catch {
-        // Claude Code remote auth may provide a raw "Authentication Code" like code#state.
-        const [rawCode, rawState] = input.split("#", 2);
-        code = rawCode || null;
-        state = rawState || state;
-      }
+      const {
+        code,
+        state,
+        error: errorParam,
+        errorDescription,
+      } = parseManualOAuthCallback(input, authData?.state || null);
 
       if (errorParam) {
         throw new Error(errorDescription || errorParam);
       }
 
       if (!code) {
-        throw new Error(
-          "No authorization code found. Paste the callback URL or the Authentication Code."
-        );
+        throw new Error(buildNoAuthCodeErrorMessage(input, authData?.redirectUri));
       }
 
       await exchangeTokens(code, state);

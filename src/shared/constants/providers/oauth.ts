@@ -232,9 +232,7 @@ export const OAUTH_PROVIDERS = {
     textIcon: "IB",
     passthroughModels: true,
     website: "https://bob.ibm.com",
-    authHint:
-      "Sign in via bob.ibm.com in the popup, or paste an existing Bob access token as a Bearer " +
-      "API key if you already have one (e.g. from the Bob VS Code extension or Bob Shell).",
+    authHint: "Sign in via bob.ibm.com in the popup — no client secret required.",
     apiHint:
       "IBM Bob exposes an OpenAI-compatible chat completions endpoint, defaulting to " +
       "https://api.us-east.bob.ibm.com/v1/chat/completions. The hostname is region-qualified " +

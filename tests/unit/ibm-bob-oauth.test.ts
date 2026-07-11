@@ -7,10 +7,13 @@
  * -only callback, which strictly rejects any other redirect_uri (confirmed
  * live: non-vscode redirect_uri -> 400 "Invalid redirect_uri").
  *
- * ibm-bob is recategorized OAuth-primary (like codebuddy-cn) but keeps the
- * existing manual Bearer-API-key path as a secondary "Add PAT" option via
- * FREE_APIKEY_PROVIDER_IDS, since some users already have a token and some
- * deployments may not be able to reach bob.ibm.com's login page.
+ * ibm-bob is recategorized OAuth-primary, matching Antigravity's pure-OAuth
+ * UI treatment exactly: it is deliberately NOT in FREE_APIKEY_PROVIDER_IDS,
+ * so the provider detail page's primary button reads "Add Connection" (not
+ * "Add PAT") and opens the browser sign-in flow directly instead of the
+ * manual API-key modal. See ProviderDetailPageClient.tsx's `isOAuth =
+ * providerSupportsOAuth && !providerSupportsPat` — membership in
+ * FREE_APIKEY_PROVIDER_IDS is what flips a provider away from that button.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -28,8 +31,8 @@ test("ibm-bob is registered as an OAuth-primary provider in the UI catalog", () 
   assert.equal(p.name, "IBM Bob");
 });
 
-test("ibm-bob also accepts a directly pasted Bearer token (dual-auth)", () => {
-  assert.ok(FREE_APIKEY_PROVIDER_IDS.has("ibm-bob"));
+test("ibm-bob is NOT in FREE_APIKEY_PROVIDER_IDS, so its primary CTA is the OAuth 'Add Connection' button (like Antigravity), not 'Add PAT'", () => {
+  assert.equal(FREE_APIKEY_PROVIDER_IDS.has("ibm-bob"), false);
 });
 
 test("ibm-bob registry entry keeps its chat-completions shape and gains oauth endpoints", () => {

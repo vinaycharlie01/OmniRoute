@@ -19,7 +19,11 @@ export const ibmBob = {
   exchangeToken: async (config: typeof IBM_BOB_CONFIG, code: string) => {
     const response = await fetch(config.tokenUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": config.userAgent,
+      },
       body: JSON.stringify({ code }),
     });
 

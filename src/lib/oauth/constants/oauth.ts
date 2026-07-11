@@ -410,11 +410,20 @@ export const TRAE_CONFIG = {
 // client secret. This is distinct from the OLDER standalone bob-code extension, which
 // only supports a `vscode://` custom-URI callback and strictly rejects any other
 // redirect_uri (confirmed live: non-vscode redirect_uri → 400 "Invalid redirect_uri").
+//
+// The token/refresh gateway also requires a recognized `User-Agent` header — the client
+// sends `${platformName}/${platformVersion}` (AuthManager's `exchangeCode`/refresh calls,
+// both threading `this.config.userAgent` through). The bundled bob-code extension's own
+// package.json pins `platformName: "IBM Bob"` and `platformVersion` to its own version
+// (2.0.1 at the time this was extracted), so `IBM Bob/2.0.1` is the real, working value —
+// not a guess. Omitting this header entirely gets a real 401
+// `{"message":"Authentication required","error":"unauthorized"}` from the gateway.
 export const IBM_BOB_CONFIG = {
   webLoginUrl: "https://bob.ibm.com",
   gatewayBaseUrl: "https://api.us-east.bob.ibm.com",
   tokenUrl: "https://api.us-east.bob.ibm.com/v1/auth/token",
   refreshUrl: "https://api.us-east.bob.ibm.com/v1/auth/refresh",
+  userAgent: "IBM Bob/2.0.1",
 };
 
 // Windsurf / Devin CLI Configuration

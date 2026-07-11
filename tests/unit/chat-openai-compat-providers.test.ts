@@ -44,10 +44,11 @@ const CHAT_OPENAI_COMPAT_PROVIDER_IDS = [
   "orcarouter",
 ];
 
-// ibm-bob is checked separately below: it's OAuth-primary (recategorized so
-// bob.ibm.com/login is the default sign-in path), so its UI metadata lives in
-// AI_PROVIDERS (backed by OAUTH_PROVIDERS), not APIKEY_PROVIDERS like the
-// providers above — but the chat request shape (registry/models) is identical.
+// ibm-bob is checked separately below: its UI metadata lives in AI_PROVIDERS
+// (backed by OAUTH_PROVIDERS, from when an OAuth flow was tried), not
+// APIKEY_PROVIDERS like the providers above — but it's back to API-key-primary
+// via FREE_APIKEY_PROVIDER_IDS, and the chat request shape (registry/models)
+// is identical to the providers above.
 
 test("chat-openai-compat providers are registered across provider metadata, registry and local catalog", () => {
   for (const providerId of CHAT_OPENAI_COMPAT_PROVIDER_IDS) {
@@ -75,11 +76,14 @@ test("orcarouter models keep the orcarouter/ namespace prefix and enable passthr
   assert.equal(APIKEY_PROVIDERS.orcarouter.passthroughModels, true);
 });
 
-test("ibm-bob is a Bearer-auth OpenAI-compatible gateway with passthrough enabled", () => {
+test("ibm-bob is an x-api-key-auth OpenAI-compatible gateway with passthrough enabled", () => {
   assert.equal(REGISTRY["ibm-bob"].format, "openai");
   assert.equal(REGISTRY["ibm-bob"].authType, "apikey");
-  assert.equal(REGISTRY["ibm-bob"].authHeader, "bearer");
-  assert.equal(REGISTRY["ibm-bob"].baseUrl, "https://api.us-east.bob.ibm.com/v1/chat/completions");
+  assert.equal(REGISTRY["ibm-bob"].authHeader, "x-api-key");
+  assert.equal(
+    REGISTRY["ibm-bob"].baseUrl,
+    "https://api.us-east.bob.ibm.com/inference/v1/chat/completions"
+  );
 
   const modelIds = REGISTRY["ibm-bob"].models.map((model) => model.id);
   assert.ok(modelIds.includes("premium"), "expected the default 'premium' model alias");

@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 
 const { POST } = await import("../../src/app/api/oauth/[provider]/[action]/route.ts");
 
-test("POST /api/oauth/ibm-bob/exchange surfaces the sanitized upstream error instead of a flat 'Internal server error'", async () => {
+test("POST /api/oauth/bob/exchange surfaces the sanitized upstream error instead of a flat 'Internal server error'", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async (url: string) => {
     if (String(url).includes("api.us-east.bob.ibm.com/v1/auth/token")) {
@@ -24,7 +24,7 @@ test("POST /api/oauth/ibm-bob/exchange surfaces the sanitized upstream error ins
   }) as typeof fetch;
 
   try {
-    const request = new Request("http://localhost:20128/api/oauth/ibm-bob/exchange", {
+    const request = new Request("http://localhost:20128/api/oauth/bob/exchange", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -33,7 +33,7 @@ test("POST /api/oauth/ibm-bob/exchange surfaces the sanitized upstream error ins
       }),
     });
     const response = await POST(request, {
-      params: Promise.resolve({ provider: "ibm-bob", action: "exchange" }),
+      params: Promise.resolve({ provider: "bob", action: "exchange" }),
     } as never);
     const body = (await response.json()) as { error?: unknown };
 

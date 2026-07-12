@@ -5,7 +5,7 @@ import { getGitHubCopilotRefreshHeaders } from "../config/providerHeaderProfiles
 import { pbkdf2Sync } from "node:crypto";
 import { runWithProxyContext } from "../utils/proxyFetch.ts";
 import { serializeRefresh } from "./refreshSerializer.ts";
-import { WINDSURF_CONFIG, IBM_BOB_CONFIG } from "@/lib/oauth/constants/oauth";
+import { WINDSURF_CONFIG, BOB_CONFIG } from "@/lib/oauth/constants/oauth";
 import { buildGitLabOAuthEndpoints, resolveGitLabOAuthBaseUrl } from "@/lib/oauth/gitlab";
 
 // Default token expiry buffer (refresh if expires within 5 minutes).
@@ -814,20 +814,21 @@ export async function refreshGitLabDuoToken(
 }
 
 /**
- * Specialized refresh for IBM Bob OAuth tokens.
+ * Specialized refresh for Bob OAuth tokens (provider formerly registered as
+ * "ibm-bob").
  * POST {refresh_token} (JSON body) to /v1/auth/refresh — no client_id/secret,
  * matching the exchange call. Response carries a fresh JWT `token`, decoded
  * by the caller the same way as the initial login (see
- * src/lib/oauth/providers/ibm-bob.ts::mapTokens).
+ * src/lib/oauth/providers/bob.ts::mapTokens).
  */
-export async function refreshIbmBobToken(refreshToken: string, log, proxyConfig: unknown = null) {
-  const endpoint = PROVIDERS["ibm-bob"]?.refreshUrl;
+export async function refreshBobToken(refreshToken: string, log, proxyConfig: unknown = null) {
+  const endpoint = PROVIDERS["bob"]?.refreshUrl;
   if (!endpoint) {
-    log?.warn?.("TOKEN_REFRESH", "No refresh URL configured for IBM Bob");
+    log?.warn?.("TOKEN_REFRESH", "No refresh URL configured for Bob");
     return null;
   }
   if (!refreshToken) {
-    log?.warn?.("TOKEN_REFRESH", "No refresh token available for IBM Bob");
+    log?.warn?.("TOKEN_REFRESH", "No refresh token available for Bob");
     return null;
   }
 
@@ -838,7 +839,7 @@ export async function refreshIbmBobToken(refreshToken: string, log, proxyConfig:
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
-          "User-Agent": IBM_BOB_CONFIG.userAgent,
+          "User-Agent": BOB_CONFIG.userAgent,
         },
         body: JSON.stringify({ refresh_token: refreshToken }),
       })
@@ -846,7 +847,7 @@ export async function refreshIbmBobToken(refreshToken: string, log, proxyConfig:
 
     if (!response.ok) {
       const { rawText, code } = await readRefreshErrorBody(response);
-      log?.error?.("TOKEN_REFRESH", "Failed to refresh IBM Bob token", {
+      log?.error?.("TOKEN_REFRESH", "Failed to refresh Bob token", {
         status: response.status,
         error: rawText.slice(0, 300),
       });
@@ -858,7 +859,7 @@ export async function refreshIbmBobToken(refreshToken: string, log, proxyConfig:
 
     const data = await response.json();
 
-    log?.info?.("TOKEN_REFRESH", "Successfully refreshed IBM Bob token", {
+    log?.info?.("TOKEN_REFRESH", "Successfully refreshed Bob token", {
       hasNewAccessToken: !!data.token,
       hasNewRefreshToken: !!data.refresh_token,
     });
@@ -874,7 +875,7 @@ export async function refreshIbmBobToken(refreshToken: string, log, proxyConfig:
   } catch (error) {
     log?.error?.(
       "TOKEN_REFRESH",
-      `Network error refreshing IBM Bob token: ${error instanceof Error ? error.message : String(error)}`
+      `Network error refreshing Bob token: ${error instanceof Error ? error.message : String(error)}`
     );
     return null;
   }
@@ -1626,8 +1627,8 @@ async function _getAccessTokenInternal(provider, credentials, log, proxyConfig: 
     case "codebuddy-cn":
       return await refreshCodebuddyCnToken(credentials.refreshToken, log, proxyConfig);
 
-    case "ibm-bob":
-      return await refreshIbmBobToken(credentials.refreshToken, log, proxyConfig);
+    case "bob":
+      return await refreshBobToken(credentials.refreshToken, log, proxyConfig);
 
     default:
       // Fallback to generic OAuth refresh for unknown providers
@@ -1657,7 +1658,7 @@ export function supportsTokenRefresh(provider) {
     "devin-cli",
     "gitlab-duo",
     "codebuddy-cn",
-    "ibm-bob",
+    "bob",
   ]);
   if (explicitlySupported.has(provider)) return true;
   const config = PROVIDERS[provider];

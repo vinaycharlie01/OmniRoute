@@ -20,7 +20,7 @@ export const GOOGLE_OAUTH_PROVIDERS = new Set(["antigravity", "agy", "gemini-cli
  * browser's address bar and paste it in manually — the same flow already
  * shipped for Google OAuth on remote installs.
  */
-export const LOOPBACK_ONLY_OAUTH_PROVIDERS = new Set([...GOOGLE_OAUTH_PROVIDERS, "ibm-bob"]);
+export const LOOPBACK_ONLY_OAUTH_PROVIDERS = new Set([...GOOGLE_OAUTH_PROVIDERS, "bob"]);
 
 export interface RedirectUriContext {
   origin: string;

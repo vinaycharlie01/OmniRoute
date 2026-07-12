@@ -223,7 +223,7 @@ export const CONFIGURABLE_BASE_URL_PROVIDERS = new Set([
   "snowflake",
   "searxng-search",
   "petals",
-  "ibm-bob",
+  "bob",
 ]);
 
 export const DEFAULT_PROVIDER_BASE_URLS: Record<string, string> = {
@@ -234,15 +234,15 @@ export const DEFAULT_PROVIDER_BASE_URLS: Record<string, string> = {
   siliconflow: "https://api.siliconflow.com/v1",
   "searxng-search": "http://localhost:8888/search",
   petals: "https://chat.petals.dev/api/v1/generate",
-  // IBM Bob's gateway hostname is region-qualified ("us-east"); tenants
+  // Bob's gateway hostname is region-qualified ("us-east"); tenants
   // provisioned to a different IBM region use a different hostname, so the
   // base URL is user-overridable rather than hardcoded as fixed. This is used
   // as the actual pre-filled form value (not just a placeholder) in
   // AddApiKeyModal, and that value wins over the validator/executor's
   // internal default when submitted — it MUST include /inference/v1, the
   // gateway's actual chat-completions service path (a host-only value here
-  // broke every new ibm-bob connection with a false "Invalid API key").
-  "ibm-bob": "https://api.us-east.bob.ibm.com/inference/v1",
+  // broke every new bob connection with a false "Invalid API key").
+  bob: "https://api.us-east.bob.ibm.com/inference/v1",
 };
 
 export function getLocalProviderMetadata(providerId?: string | null) {
@@ -316,7 +316,7 @@ export function getProviderBaseUrlPlaceholder(providerId?: string | null) {
       return "https://example-account.snowflakecomputing.com";
     case "searxng-search":
       return "http://localhost:8888/search";
-    case "ibm-bob":
+    case "bob":
       return getProviderBaseUrlDefault(providerId);
     default:
       return "";

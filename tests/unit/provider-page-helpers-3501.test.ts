@@ -79,20 +79,17 @@ test("base-url helpers run without throwing (transitive imports present)", () =>
   assert.doesNotThrow(() => isBaseUrlConfigurableProvider(null));
 });
 
-test("ibm-bob base URL default includes the /inference/v1 service path (region-qualified, user-overridable)", () => {
+test("bob base URL default includes the /inference/v1 service path (region-qualified, user-overridable)", () => {
   // Regression guard: the "Add PAT" form pre-fills this value as the actual
   // submitted providerSpecificData.baseUrl (not just a placeholder hint), and
   // that override wins over the internal default in the validator/executor.
-  // A host-only default here silently breaks every new ibm-bob connection —
-  // the request lands on .../chat/completions with no /inference/v1 segment
-  // and IBM's gateway rejects it, surfacing as a false "Invalid API key".
-  assert.equal(isBaseUrlConfigurableProvider("ibm-bob"), true);
+  // A host-only default here silently breaks every new bob connection — the
+  // request lands on .../chat/completions with no /inference/v1 segment and
+  // IBM's gateway rejects it, surfacing as a false "Invalid API key".
+  assert.equal(isBaseUrlConfigurableProvider("bob"), true);
+  assert.equal(getProviderBaseUrlDefault("bob"), "https://api.us-east.bob.ibm.com/inference/v1");
   assert.equal(
-    getProviderBaseUrlDefault("ibm-bob"),
-    "https://api.us-east.bob.ibm.com/inference/v1"
-  );
-  assert.equal(
-    getProviderBaseUrlPlaceholder("ibm-bob"),
+    getProviderBaseUrlPlaceholder("bob"),
     "https://api.us-east.bob.ibm.com/inference/v1"
   );
 });

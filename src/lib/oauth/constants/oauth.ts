@@ -401,7 +401,8 @@ export const TRAE_CONFIG = {
     "Authorize via trae.ai in the popup, or sign in to solo.trae.ai and paste the Cloud-IDE-JWT from the Authorization header (~14-day lifetime).",
 };
 
-// IBM Bob Configuration (Authorization Code flow, no client_id/secret)
+// Bob Configuration (formerly registered as "ibm-bob") (Authorization Code
+// flow, no client_id/secret)
 //
 // Reverse-engineered from the Bob VS Code extension bundle (app/extensions/bob-code):
 // the client opens `${webLoginUrl}/login?callback_uri=<redirect>&state=<uuid>` in a
@@ -418,7 +419,7 @@ export const TRAE_CONFIG = {
 // (2.0.1 at the time this was extracted), so `IBM Bob/2.0.1` is the real, working value —
 // not a guess. Omitting this header entirely gets a real 401
 // `{"message":"Authentication required","error":"unauthorized"}` from the gateway.
-export const IBM_BOB_CONFIG = {
+export const BOB_CONFIG = {
   webLoginUrl: "https://bob.ibm.com",
   gatewayBaseUrl: "https://api.us-east.bob.ibm.com",
   tokenUrl: "https://api.us-east.bob.ibm.com/v1/auth/token",

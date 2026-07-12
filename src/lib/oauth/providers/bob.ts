@@ -1,8 +1,9 @@
 import { decodeJwt } from "jose";
-import { IBM_BOB_CONFIG } from "../constants/oauth";
+import { BOB_CONFIG } from "../constants/oauth";
 
 /**
- * IBM Bob OAuth provider — authorization_code flow, no client_id/secret.
+ * Bob OAuth provider (formerly registered as "ibm-bob") — authorization_code
+ * flow, no client_id/secret.
  *
  * Matches the newer Bob VS Code extension bundle's own client: it builds
  * `${webLoginUrl}/login?callback_uri=<redirect>&state=<uuid>`, then exchanges
@@ -14,14 +15,14 @@ import { IBM_BOB_CONFIG } from "../constants/oauth";
  * Omitting callback_uri — or the User-Agent header — produces a 401
  * `{"message":"Authentication required","error":"unauthorized"}`.
  */
-export const ibmBob = {
-  config: IBM_BOB_CONFIG,
+export const bob = {
+  config: BOB_CONFIG,
   flowType: "authorization_code",
-  buildAuthUrl: (config: typeof IBM_BOB_CONFIG, redirectUri: string, state: string) => {
+  buildAuthUrl: (config: typeof BOB_CONFIG, redirectUri: string, state: string) => {
     const params = new URLSearchParams({ callback_uri: redirectUri, state });
     return `${config.webLoginUrl}/login?${params.toString()}`;
   },
-  exchangeToken: async (config: typeof IBM_BOB_CONFIG, code: string, redirectUri?: string) => {
+  exchangeToken: async (config: typeof BOB_CONFIG, code: string, redirectUri?: string) => {
     const body: Record<string, string> = { code };
     if (redirectUri) {
       body.callback_uri = redirectUri;

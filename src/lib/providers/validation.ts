@@ -282,7 +282,7 @@ export async function validateProviderApiKey({ provider, apiKey, providerSpecifi
     // `x-api-key` header, not `Authorization: Bearer` — confirmed against a
     // working published reference client (github.com/Kynareth01/bob-proxy),
     // so this can't reuse buildOpengatewayValidator/buildBearerHeaders as-is.
-    "ibm-bob": async ({ apiKey, providerSpecificData }: any) => {
+    bob: async ({ apiKey, providerSpecificData }: any) => {
       try {
         const baseUrl = normalizeBaseUrl(
           providerSpecificData?.baseUrl || "https://api.us-east.bob.ibm.com/inference/v1"

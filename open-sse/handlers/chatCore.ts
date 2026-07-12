@@ -864,7 +864,7 @@ export async function handleChatCore({
     return cacheHit;
   }
 
-  body = sanitizeChatRequestBody(body, sourceFormat, targetFormat);
+  body = sanitizeChatRequestBody(body, sourceFormat, targetFormat, provider);
   // Per-request opt-out: clients that manage their own context send
   // `x-omniroute-no-memory: true` to skip memory+skills injection (a null owner
   // disables both branches in injectMemoryAndSkills). See PRD-2026-06-19-no-memory-header.

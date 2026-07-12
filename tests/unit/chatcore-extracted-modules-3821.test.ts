@@ -32,7 +32,11 @@ test("sanitizeChatRequestBody: Responses target maps max_completion_tokens → m
 });
 
 test("sanitizeChatRequestBody: Responses target maps max_tokens → max_output_tokens", () => {
-  const out = sanitizeChatRequestBody({ max_tokens: 128 }, FORMATS.OPENAI_RESPONSES, FORMATS.OPENAI);
+  const out = sanitizeChatRequestBody(
+    { max_tokens: 128 },
+    FORMATS.OPENAI_RESPONSES,
+    FORMATS.OPENAI
+  );
   assert.equal(out.max_output_tokens, 128);
   assert.equal(out.max_tokens, undefined);
 });
@@ -63,6 +67,47 @@ test("sanitizeChatRequestBody: strips empty message name and filters nameless to
   assert.equal((tools[0].function as Record<string, unknown>).name, "real_tool");
 });
 
+test("sanitizeChatRequestBody: strips tools[].function.strict for bob (rejected as unexpected property)", () => {
+  const out = sanitizeChatRequestBody(
+    {
+      tools: [
+        {
+          type: "function",
+          function: { name: "real_tool", parameters: {}, strict: true },
+        },
+      ],
+    },
+    FORMATS.OPENAI,
+    FORMATS.OPENAI,
+    "bob"
+  );
+
+  const tools = out.tools as Array<Record<string, unknown>>;
+  const fn = tools[0].function as Record<string, unknown>;
+  assert.equal(fn.name, "real_tool");
+  assert.ok(!("strict" in fn), "strict must be stripped for bob");
+});
+
+test("sanitizeChatRequestBody: keeps tools[].function.strict for other providers", () => {
+  const out = sanitizeChatRequestBody(
+    {
+      tools: [
+        {
+          type: "function",
+          function: { name: "real_tool", parameters: {}, strict: true },
+        },
+      ],
+    },
+    FORMATS.OPENAI,
+    FORMATS.OPENAI,
+    "openai"
+  );
+
+  const tools = out.tools as Array<Record<string, unknown>>;
+  const fn = tools[0].function as Record<string, unknown>;
+  assert.equal(fn.strict, true, "strict must be preserved for providers that support it");
+});
+
 test("checkIdempotencyCache returns { hit:null, idempotencyKey } on a miss", async () => {
   const headers = new Headers({ "idempotency-key": "idem-miss-3821" });
   const result = await checkIdempotencyCache({
@@ -91,7 +136,11 @@ test("checkIdempotencyCache returns a hit Response reusing the same key after a 
     log: undefined,
   });
 
-  assert.equal(result.idempotencyKey, key, "the resolved key is returned for the save site to reuse");
+  assert.equal(
+    result.idempotencyKey,
+    key,
+    "the resolved key is returned for the save site to reuse"
+  );
   assert.ok(result.hit, "a cached entry produces a hit");
   assert.equal(result.hit!.response.headers.get("X-OmniRoute-Idempotent"), "true");
 });

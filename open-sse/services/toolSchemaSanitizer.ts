@@ -118,7 +118,18 @@ function normalizeParameters(parameters: unknown): unknown {
   return { type: "object", properties: {}, additionalProperties: true };
 }
 
-export function sanitizeOpenAITool(tool: unknown): unknown {
+export interface SanitizeOpenAIToolOptions {
+  /**
+   * Strip the OpenAI Structured Outputs `function.strict` property. Some
+   * upstreams (IBM Bob's gateway, confirmed for `sonnet-4.5`/`sonnet-4.6`) run
+   * exact JSON-schema validation on the request body and reject `strict` with
+   * a 422 "unexpected property" error at `tools[N].function.strict` since they
+   * don't implement that OpenAI extension.
+   */
+  stripStrict?: boolean;
+}
+
+export function sanitizeOpenAITool(tool: unknown, options?: SanitizeOpenAIToolOptions): unknown {
   if (!isPlainObject(tool)) return tool;
   const t = { ...tool };
 
@@ -126,17 +137,22 @@ export function sanitizeOpenAITool(tool: unknown): unknown {
     // Chat Completions format: { type: "function", function: { name, parameters } }
     const f = { ...t.function };
     f.parameters = normalizeParameters(f.parameters);
+    if (options?.stripStrict) delete f.strict;
     t.function = f;
   } else if (t.type === "function") {
     // Responses API format: { type: "function", name, parameters } — no `function`
     // wrapper. /v1/responses requests reach chatCore in this shape and are only
     // unwrapped later by the request translator, so we have to sanitize here too.
     t.parameters = normalizeParameters(t.parameters);
+    if (options?.stripStrict) delete t.strict;
   }
 
   return t;
 }
 
-export function sanitizeOpenAITools(tools: unknown[]): unknown[] {
-  return tools.map(sanitizeOpenAITool);
+export function sanitizeOpenAITools(
+  tools: unknown[],
+  options?: SanitizeOpenAIToolOptions
+): unknown[] {
+  return tools.map((tool) => sanitizeOpenAITool(tool, options));
 }

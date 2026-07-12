@@ -356,18 +356,18 @@ test("DefaultExecutor.buildHeaders uses x-api-key for zai and glm-coding-apikey"
   assert.equal(glmHeaders["Authorization"], undefined);
 });
 
-test("DefaultExecutor routes ibm-bob through /inference/v1 with an x-api-key header", () => {
+test("DefaultExecutor routes bob through /inference/v1 with an x-api-key header", () => {
   // A working published reference client (github.com/Kynareth01/bob-proxy)
   // confirms the gateway is reached via /inference/v1/chat/completions with
   // an x-api-key header, not /v1/chat/completions with Authorization: Bearer
   // — the previous OAuth-derived-Bearer shape never worked against IBM's real
   // backend in practice.
-  const ibmBob = new DefaultExecutor("ibm-bob");
-  const headers = ibmBob.buildHeaders({ apiKey: "bob-key" }, true);
+  const bob = new DefaultExecutor("bob");
+  const headers = bob.buildHeaders({ apiKey: "bob-key" }, true);
   assert.equal(headers["x-api-key"], "bob-key");
   assert.equal(headers["Authorization"], undefined);
   assert.equal(
-    ibmBob.buildUrl("premium", true),
+    bob.buildUrl("premium", true),
     "https://api.us-east.bob.ibm.com/inference/v1/chat/completions"
   );
 });

@@ -44,11 +44,11 @@ const CHAT_OPENAI_COMPAT_PROVIDER_IDS = [
   "orcarouter",
 ];
 
-// ibm-bob is checked separately below: its UI metadata lives in AI_PROVIDERS
-// (backed by OAUTH_PROVIDERS, from when an OAuth flow was tried), not
-// APIKEY_PROVIDERS like the providers above — but it's back to API-key-primary
-// via FREE_APIKEY_PROVIDER_IDS, and the chat request shape (registry/models)
-// is identical to the providers above.
+// bob (formerly registered as "ibm-bob") is checked separately below: its UI
+// metadata lives in AI_PROVIDERS (backed by OAUTH_PROVIDERS, from when an
+// OAuth flow was tried), not APIKEY_PROVIDERS like the providers above — but
+// it's back to API-key-primary via FREE_APIKEY_PROVIDER_IDS, and the chat
+// request shape (registry/models) is identical to the providers above.
 
 test("chat-openai-compat providers are registered across provider metadata, registry and local catalog", () => {
   for (const providerId of CHAT_OPENAI_COMPAT_PROVIDER_IDS) {
@@ -76,21 +76,26 @@ test("orcarouter models keep the orcarouter/ namespace prefix and enable passthr
   assert.equal(APIKEY_PROVIDERS.orcarouter.passthroughModels, true);
 });
 
-test("ibm-bob is an x-api-key-auth OpenAI-compatible gateway with passthrough enabled", () => {
-  assert.equal(REGISTRY["ibm-bob"].format, "openai");
-  assert.equal(REGISTRY["ibm-bob"].authType, "apikey");
-  assert.equal(REGISTRY["ibm-bob"].authHeader, "x-api-key");
+test("bob is an x-api-key-auth OpenAI-compatible gateway with passthrough enabled", () => {
+  assert.equal(REGISTRY["bob"].format, "openai");
+  assert.equal(REGISTRY["bob"].authType, "apikey");
+  assert.equal(REGISTRY["bob"].authHeader, "x-api-key");
   assert.equal(
-    REGISTRY["ibm-bob"].baseUrl,
+    REGISTRY["bob"].baseUrl,
     "https://api.us-east.bob.ibm.com/inference/v1/chat/completions"
   );
 
-  const modelIds = REGISTRY["ibm-bob"].models.map((model) => model.id);
+  const modelIds = REGISTRY["bob"].models.map((model) => model.id);
   assert.ok(modelIds.includes("premium"), "expected the default 'premium' model alias");
-  assert.equal(AI_PROVIDERS["ibm-bob"].passthroughModels, true);
+  // Live model.info discovery (github.com/Kynareth01/bob-proxy's /model/info
+  // reference call) confirmed these additional real chat models beyond the
+  // single default alias.
+  assert.ok(modelIds.includes("sonnet-4.6"), "expected sonnet-4.6 in the curated catalog");
+  assert.ok(modelIds.includes("gpt-oss-20b"), "expected gpt-oss-20b in the curated catalog");
+  assert.equal(AI_PROVIDERS["bob"].passthroughModels, true);
 
-  const models = getModelsByProviderId("ibm-bob");
-  assert.ok(Array.isArray(models) && models.length > 0, "ibm-bob models must not be empty");
+  const models = getModelsByProviderId("bob");
+  assert.ok(Array.isArray(models) && models.length > 0, "bob models must not be empty");
 });
 
 test("upstage chat catalog does not include non-chat specialty models", () => {

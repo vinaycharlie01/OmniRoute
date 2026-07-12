@@ -7,7 +7,7 @@
  * (app/extensions/bob-code) always hardcodes a loopback callback_uri
  * (http://127.0.0.1:<port>) — it never tries a public domain — so
  * bob.ibm.com's acceptance of a public HTTPS redirect_uri was never actually
- * verified. ibm-bob now gets the same loopback-always treatment as the
+ * verified. bob now gets the same loopback-always treatment as the
  * Google OAuth providers (antigravity/agy/gemini-cli), which already ship
  * this exact pattern for the same underlying reason (their embedded OAuth
  * client only documents loopback support).
@@ -36,25 +36,25 @@ const localCtx = {
   publicBaseUrl: null,
 };
 
-test("ibm-bob is in LOOPBACK_ONLY_OAUTH_PROVIDERS alongside the Google OAuth providers", () => {
-  assert.ok(LOOPBACK_ONLY_OAUTH_PROVIDERS.has("ibm-bob"));
+test("bob is in LOOPBACK_ONLY_OAUTH_PROVIDERS alongside the Google OAuth providers", () => {
+  assert.ok(LOOPBACK_ONLY_OAUTH_PROVIDERS.has("bob"));
   for (const p of GOOGLE_OAUTH_PROVIDERS) {
     assert.ok(LOOPBACK_ONLY_OAUTH_PROVIDERS.has(p));
   }
 });
 
-test("ibm-bob always resolves to a loopback redirect_uri, even on a remote (Railway) dashboard", () => {
-  const uri = resolveOAuthModalRedirectUri("ibm-bob", remoteCtx);
+test("bob always resolves to a loopback redirect_uri, even on a remote (Railway) dashboard", () => {
+  const uri = resolveOAuthModalRedirectUri("bob", remoteCtx);
   assert.equal(uri, "http://127.0.0.1:20128/callback");
   assert.equal(uri.includes("railway"), false);
 });
 
-test("ibm-bob uses the dashboard's own port for the loopback redirect_uri", () => {
-  const uri = resolveOAuthModalRedirectUri("ibm-bob", { ...remoteCtx, port: "8080" });
+test("bob uses the dashboard's own port for the loopback redirect_uri", () => {
+  const uri = resolveOAuthModalRedirectUri("bob", { ...remoteCtx, port: "8080" });
   assert.equal(uri, "http://127.0.0.1:8080/callback");
 });
 
-test("antigravity (Google OAuth) still resolves to loopback on remote, matching ibm-bob", () => {
+test("antigravity (Google OAuth) still resolves to loopback on remote, matching bob", () => {
   const uri = resolveOAuthModalRedirectUri("antigravity", remoteCtx);
   assert.equal(uri, "http://127.0.0.1:20128/callback");
 });

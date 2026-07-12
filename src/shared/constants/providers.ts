@@ -45,14 +45,15 @@ export const FREE_APIKEY_PROVIDER_IDS = new Set([
   // API key (Authorization: Bearer). Admit it through the same managed-provider
   // gate so POST /api/providers accepts the dual-auth shape.
   "codebuddy-cn",
-  // ibm-bob was briefly made OAuth-primary (bob.ibm.com/login), but IBM's real
-  // /v1/auth/token exchange stayed unreachable ("Authentication required")
-  // even with a byte-for-byte correct request. A working, published reference
-  // client (github.com/Kynareth01/bob-proxy) confirms the gateway is reached
-  // with a plain standalone API key instead, so ibm-bob is back to
-  // API-key-primary ("Add PAT"). The OAuth code path stays in the codebase
-  // but is no longer the default UI flow.
-  "ibm-bob",
+  // bob (formerly registered as "ibm-bob") was briefly made OAuth-primary
+  // (bob.ibm.com/login), but IBM's real /v1/auth/token exchange stayed
+  // unreachable ("Authentication required") even with a byte-for-byte correct
+  // request. A working, published reference client
+  // (github.com/Kynareth01/bob-proxy) confirms the gateway is reached with a
+  // plain standalone API key instead, so bob is back to API-key-primary
+  // ("Add PAT"). The OAuth code path stays in the codebase but is no longer
+  // the default UI flow.
+  "bob",
 ]);
 
 export function supportsApiKeyOnFreeProvider(providerId: unknown): boolean {

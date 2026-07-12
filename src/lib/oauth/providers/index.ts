@@ -23,7 +23,7 @@ import { gitlabDuo } from "./gitlab-duo";
 import { kiro } from "./kiro";
 import { cursor } from "./cursor";
 import { trae } from "./trae";
-import { ibmBob } from "./ibm-bob";
+import { bob } from "./bob";
 import { kilocode } from "./kilocode";
 import { cline } from "./cline";
 import { windsurf } from "./windsurf";
@@ -45,7 +45,7 @@ export const PROVIDERS = {
   "amazon-q": kiro,
   cursor,
   trae,
-  "ibm-bob": ibmBob,
+  bob,
   kilocode,
   cline,
   windsurf,

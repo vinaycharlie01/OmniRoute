@@ -443,6 +443,24 @@ const KIMI_CODING_MODELS_CONFIG: ProviderModelsConfigEntry = {
 
 // Provider models endpoints configuration
 const PROVIDER_MODELS_CONFIG: Record<string, ProviderModelsConfigEntry> = {
+  // Bob (formerly registered as "ibm-bob") — LiteLLM-style GET /model/info,
+  // confirmed live: `{ data: [{ model_name, model_info }] }`. Reached through
+  // the inference client's own base path (traced from the Bob VS Code
+  // extension's ModelInfoService: `this.gatewayClient.fetch("/model/info")`
+  // against the inference gateway client).
+  bob: {
+    url: "https://api.us-east.bob.ibm.com/inference/v1/model/info",
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    authHeader: "x-api-key",
+    parseResponse: (data) =>
+      (data.data || [])
+        .map((entry: any) => {
+          const id = typeof entry?.model_name === "string" ? entry.model_name.trim() : "";
+          return id ? { id, name: id } : null;
+        })
+        .filter(Boolean),
+  },
   claude: {
     url: "https://api.anthropic.com/v1/models",
     method: "GET",

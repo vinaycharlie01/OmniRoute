@@ -223,21 +223,21 @@ export const OAUTH_PROVIDERS = {
     authHint:
       "Tencent CodeBuddy CN (copilot.tencent.com). Sign in via the official CLI device-code flow, or paste a direct API key (sent as Authorization: Bearer). Catalog: GLM / Kimi / MiniMax / DeepSeek / Hunyuan.",
   },
-  "ibm-bob": {
-    id: "ibm-bob",
-    alias: "ibm-bob",
-    name: "IBM Bob",
+  bob: {
+    id: "bob",
+    alias: "bob",
+    name: "Bob",
     icon: "hub",
     color: "#617A91",
-    textIcon: "IB",
+    textIcon: "B",
     passthroughModels: true,
     website: "https://bob.ibm.com",
     authHint: "Sign in via bob.ibm.com in the popup — no client secret required.",
     apiHint:
-      "IBM Bob exposes an OpenAI-compatible chat completions endpoint, defaulting to " +
-      "https://api.us-east.bob.ibm.com/v1/chat/completions. The hostname is region-qualified " +
-      '("us-east") — if your IBM Bob account was provisioned to a different region, override ' +
-      "the base URL below to match. Requires an active IBM Bob subscription; the default " +
-      'routed model alias is "premium".',
+      "Bob exposes an OpenAI-compatible chat completions endpoint, defaulting to " +
+      "https://api.us-east.bob.ibm.com/inference/v1/chat/completions. The hostname is " +
+      'region-qualified ("us-east") — if your Bob account was provisioned to a different ' +
+      "region, override the base URL below to match. Requires an active Bob subscription; " +
+      'the default routed model alias is "premium".',
   },
 };

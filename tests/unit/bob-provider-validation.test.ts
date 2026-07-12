@@ -4,7 +4,7 @@
  * never calls GET /models). The generic validateOpenAILikeProvider path probes
  * GET /models first and would short-circuit to "Invalid API key" on any 401/403
  * there — a false negative if that route isn't authorized for chat-scoped
- * tokens even when the token is genuinely valid for chat completions. ibm-bob
+ * tokens even when the token is genuinely valid for chat completions. bob
  * has its own dedicated validator (bypasses /models entirely) instead of
  * falling through to the generic default.
  *
@@ -18,7 +18,7 @@ import assert from "node:assert/strict";
 
 const { validateProviderApiKey } = await import("../../src/lib/providers/validation.ts");
 
-test("ibm-bob validates via a single POST /chat/completions call (no /models probe), using x-api-key", async () => {
+test("bob validates via a single POST /chat/completions call (no /models probe), using x-api-key", async () => {
   const originalFetch = globalThis.fetch;
   const calls: { url: string; method: string; headers: Headers; body: unknown }[] = [];
   globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
@@ -35,7 +35,7 @@ test("ibm-bob validates via a single POST /chat/completions call (no /models pro
 
   try {
     const result = await validateProviderApiKey({
-      provider: "ibm-bob",
+      provider: "bob",
       apiKey: "valid-bob-token",
       providerSpecificData: {},
     });
@@ -51,14 +51,14 @@ test("ibm-bob validates via a single POST /chat/completions call (no /models pro
   }
 });
 
-test("ibm-bob reports Invalid API key on a real 401 from /chat/completions", async () => {
+test("bob reports Invalid API key on a real 401 from /chat/completions", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async () =>
     new Response(JSON.stringify({ error: "invalid token" }), { status: 401 })) as typeof fetch;
 
   try {
     const result = await validateProviderApiKey({
-      provider: "ibm-bob",
+      provider: "bob",
       apiKey: "bad-token",
       providerSpecificData: {},
     });
@@ -69,7 +69,7 @@ test("ibm-bob reports Invalid API key on a real 401 from /chat/completions", asy
   }
 });
 
-test("ibm-bob honors a region-overridden base URL", async () => {
+test("bob honors a region-overridden base URL", async () => {
   const originalFetch = globalThis.fetch;
   let requestedUrl = "";
   globalThis.fetch = (async (url: string) => {
@@ -81,7 +81,7 @@ test("ibm-bob honors a region-overridden base URL", async () => {
 
   try {
     const result = await validateProviderApiKey({
-      provider: "ibm-bob",
+      provider: "bob",
       apiKey: "valid-bob-token",
       providerSpecificData: { baseUrl: "https://api.eu-west.bob.ibm.com/inference/v1" },
     });

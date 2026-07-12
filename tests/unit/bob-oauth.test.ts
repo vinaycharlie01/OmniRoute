@@ -7,14 +7,15 @@
  * -only callback, which strictly rejects any other redirect_uri (confirmed
  * live: non-vscode redirect_uri -> 400 "Invalid redirect_uri").
  *
- * ibm-bob was briefly made OAuth-primary, but IBM's real /v1/auth/token
- * exchange stayed unreachable ("Authentication required") in practice even
- * with a byte-for-byte correct request (confirmed both server-side and via
- * a direct curl outside this app). ibm-bob is back in FREE_APIKEY_PROVIDER_IDS
- * so the provider detail page's primary button reads "Add PAT" and opens the
- * manual API-key modal again — see ProviderDetailPageClient.tsx's `isOAuth =
- * providerSupportsOAuth && !providerSupportsPat`. The OAuth code below still
- * works and is exercised by these tests, it's just no longer the default flow.
+ * bob (formerly registered as "ibm-bob") was briefly made OAuth-primary, but
+ * IBM's real /v1/auth/token exchange stayed unreachable ("Authentication
+ * required") in practice even with a byte-for-byte correct request (confirmed
+ * both server-side and via a direct curl outside this app). bob is back in
+ * FREE_APIKEY_PROVIDER_IDS so the provider detail page's primary button reads
+ * "Add PAT" and opens the manual API-key modal again — see
+ * ProviderDetailPageClient.tsx's `isOAuth = providerSupportsOAuth &&
+ * !providerSupportsPat`. The OAuth code below still works and is exercised
+ * by these tests, it's just no longer the default flow.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -23,44 +24,44 @@ import { AI_PROVIDERS, FREE_APIKEY_PROVIDER_IDS } from "../../src/shared/constan
 import { REGISTRY } from "../../open-sse/config/providerRegistry.ts";
 import { supportsTokenRefresh } from "../../open-sse/services/tokenRefresh.ts";
 import PROVIDERS_MAP from "../../src/lib/oauth/providers/index.ts";
-import { IBM_BOB_CONFIG } from "../../src/lib/oauth/constants/oauth.ts";
+import { BOB_CONFIG } from "../../src/lib/oauth/constants/oauth.ts";
 
-test("ibm-bob still has an OAuth catalog entry available", () => {
-  const p = AI_PROVIDERS["ibm-bob"];
-  assert.ok(p, "AI_PROVIDERS['ibm-bob'] must exist");
-  assert.equal(p.id, "ibm-bob");
-  assert.equal(p.name, "IBM Bob");
+test("bob still has an OAuth catalog entry available", () => {
+  const p = AI_PROVIDERS["bob"];
+  assert.ok(p, "AI_PROVIDERS['bob'] must exist");
+  assert.equal(p.id, "bob");
+  assert.equal(p.name, "Bob");
 });
 
-test("ibm-bob is in FREE_APIKEY_PROVIDER_IDS, so its primary CTA is 'Add PAT', not the OAuth 'Add Connection' button", () => {
-  assert.equal(FREE_APIKEY_PROVIDER_IDS.has("ibm-bob"), true);
+test("bob is in FREE_APIKEY_PROVIDER_IDS, so its primary CTA is 'Add PAT', not the OAuth 'Add Connection' button", () => {
+  assert.equal(FREE_APIKEY_PROVIDER_IDS.has("bob"), true);
 });
 
-test("ibm-bob registry entry serves chat completions via /inference/v1 with x-api-key, and still carries oauth endpoints", () => {
-  const r = REGISTRY["ibm-bob"];
-  assert.ok(r, "REGISTRY['ibm-bob'] must exist");
+test("bob registry entry serves chat completions via /inference/v1 with x-api-key, and still carries oauth endpoints", () => {
+  const r = REGISTRY["bob"];
+  assert.ok(r, "REGISTRY['bob'] must exist");
   assert.equal(r.baseUrl, "https://api.us-east.bob.ibm.com/inference/v1/chat/completions");
   assert.equal(r.authHeader, "x-api-key");
   assert.equal(r.oauth?.tokenUrl, "https://api.us-east.bob.ibm.com/v1/auth/token");
   assert.equal(r.oauth?.refreshUrl, "https://api.us-east.bob.ibm.com/v1/auth/refresh");
 });
 
-test("ibm-bob OAuth provider builds the bob.ibm.com/login authorize URL", () => {
+test("bob OAuth provider builds the bob.ibm.com/login authorize URL", () => {
   const map = PROVIDERS_MAP as Record<string, any>;
-  const provider = map["ibm-bob"];
-  assert.ok(provider, "PROVIDERS map must include 'ibm-bob'");
+  const provider = map["bob"];
+  assert.ok(provider, "PROVIDERS map must include 'bob'");
   assert.equal(provider.flowType, "authorization_code");
 
-  const url = provider.buildAuthUrl(IBM_BOB_CONFIG, "http://127.0.0.1:20128/callback", "state-123");
+  const url = provider.buildAuthUrl(BOB_CONFIG, "http://127.0.0.1:20128/callback", "state-123");
   const parsed = new URL(url);
   assert.equal(parsed.origin + parsed.pathname, "https://bob.ibm.com/login");
   assert.equal(parsed.searchParams.get("callback_uri"), "http://127.0.0.1:20128/callback");
   assert.equal(parsed.searchParams.get("state"), "state-123");
 });
 
-test("ibm-bob exchangeToken POSTs {code, callback_uri} with the User-Agent header", async () => {
+test("bob exchangeToken POSTs {code, callback_uri} with the User-Agent header", async () => {
   const map = PROVIDERS_MAP as Record<string, any>;
-  const provider = map["ibm-bob"];
+  const provider = map["bob"];
   const origFetch = globalThis.fetch;
   const calls: { url: string; init?: RequestInit }[] = [];
   globalThis.fetch = (async (url: any, init?: RequestInit) => {
@@ -78,7 +79,7 @@ test("ibm-bob exchangeToken POSTs {code, callback_uri} with the User-Agent heade
 
   try {
     const redirectUri = "http://127.0.0.1:20128/callback";
-    const tokens = await provider.exchangeToken(IBM_BOB_CONFIG, "auth-code-xyz", redirectUri);
+    const tokens = await provider.exchangeToken(BOB_CONFIG, "auth-code-xyz", redirectUri);
     assert.equal(calls.length, 1);
     assert.equal(calls[0].url, "https://api.us-east.bob.ibm.com/v1/auth/token");
     assert.equal(calls[0].init?.method, "POST");
@@ -92,15 +93,15 @@ test("ibm-bob exchangeToken POSTs {code, callback_uri} with the User-Agent heade
     // live) — it is not optional decoration, it's how the client authenticates
     // to this code-only, no-secret token endpoint.
     const headers = new Headers(calls[0].init?.headers);
-    assert.equal(headers.get("User-Agent"), IBM_BOB_CONFIG.userAgent);
+    assert.equal(headers.get("User-Agent"), BOB_CONFIG.userAgent);
   } finally {
     globalThis.fetch = origFetch;
   }
 });
 
-test("ibm-bob mapTokens decodes the JWT for email/expiry and carries idp tokens", () => {
+test("bob mapTokens decodes the JWT for email/expiry and carries idp tokens", () => {
   const map = PROVIDERS_MAP as Record<string, any>;
-  const provider = map["ibm-bob"];
+  const provider = map["bob"];
   const exp = Math.floor(Date.now() / 1000) + 3600;
   const payload = Buffer.from(JSON.stringify({ user: "alice@ibm.com", exp })).toString("base64url");
   const jwt = `eyJhbGciOiJIUzI1NiJ9.${payload}.sig`;
@@ -120,12 +121,12 @@ test("ibm-bob mapTokens decodes the JWT for email/expiry and carries idp tokens"
   assert.equal(mapped.providerSpecificData.idpIdToken, "idp-it");
 });
 
-test("ibm-bob token refresh handler is wired in tokenRefresh.ts", () => {
-  assert.equal(supportsTokenRefresh("ibm-bob"), true);
+test("bob token refresh handler is wired in tokenRefresh.ts", () => {
+  assert.equal(supportsTokenRefresh("bob"), true);
 });
 
-test("refreshIbmBobToken POSTs {refresh_token} and returns the new token", async () => {
-  const { refreshIbmBobToken } = await import("../../open-sse/services/tokenRefresh.ts");
+test("refreshBobToken POSTs {refresh_token} and returns the new token", async () => {
+  const { refreshBobToken } = await import("../../open-sse/services/tokenRefresh.ts");
   const origFetch = globalThis.fetch;
   const calls: { url: string; init?: RequestInit }[] = [];
   globalThis.fetch = (async (url: any, init?: RequestInit) => {
@@ -136,27 +137,27 @@ test("refreshIbmBobToken POSTs {refresh_token} and returns the new token", async
   }) as typeof fetch;
 
   try {
-    const result = await refreshIbmBobToken("old-refresh", undefined, null);
+    const result = await refreshBobToken("old-refresh", undefined, null);
     assert.equal(calls[0].url, "https://api.us-east.bob.ibm.com/v1/auth/refresh");
     const body = JSON.parse(calls[0].init?.body as string);
     assert.deepEqual(body, { refresh_token: "old-refresh" });
     assert.equal(result?.accessToken, "new-jwt");
     assert.equal(result?.refreshToken, "new-refresh");
     const headers = new Headers(calls[0].init?.headers);
-    assert.equal(headers.get("User-Agent"), IBM_BOB_CONFIG.userAgent);
+    assert.equal(headers.get("User-Agent"), BOB_CONFIG.userAgent);
   } finally {
     globalThis.fetch = origFetch;
   }
 });
 
-test("refreshIbmBobToken returns the unrecoverable sentinel on 401", async () => {
-  const { refreshIbmBobToken } = await import("../../open-sse/services/tokenRefresh.ts");
+test("refreshBobToken returns the unrecoverable sentinel on 401", async () => {
+  const { refreshBobToken } = await import("../../open-sse/services/tokenRefresh.ts");
   const origFetch = globalThis.fetch;
   globalThis.fetch = (async () =>
     new Response(JSON.stringify({ error: "invalid_grant" }), { status: 401 })) as typeof fetch;
 
   try {
-    const result = await refreshIbmBobToken("dead-refresh", undefined, null);
+    const result = await refreshBobToken("dead-refresh", undefined, null);
     assert.equal(result?.error, "unrecoverable_refresh_error");
   } finally {
     globalThis.fetch = origFetch;
